@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Manager</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="header-content">
+        <h1>Task Manager</h1>
+        <p class="subtitle">Organize, track, and complete your tasks</p>
+      </div>
+      <div class="stats-badge">
+        <span id="task-count">0</span> Tasks
+      </div>
+    </header>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <main class="main-layout">
+      <!-- Left Column: Form -->
+      <section class="card form-card">
+        <h2 id="form-title">Create New Task</h2>
+        <form id="task-form">
+          <input type="hidden" id="task-id">
+
+          <div class="form-group">
+            <label for="title">Title <span class="required">*</span></label>
+            <input type="text" id="title" name="title" placeholder="e.g. Prepare presentation" required maxlength="100">
+          </div>
+
+          <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" rows="3" placeholder="Additional details..." maxlength="1000"></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col">
+              <label for="priority">Priority</label>
+              <select id="priority" name="priority">
+                <option value="LOW">Low</option>
+                <option value="MEDIUM" selected>Medium</option>
+                <option value="HIGH">High</option>
+              </select>
+            </div>
+
+            <div class="form-group col">
+              <label for="dueDate">Due Date</label>
+              <input type="date" id="dueDate" name="dueDate">
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" id="save-btn" class="btn btn-primary">Save Task</button>
+            <button type="button" id="cancel-btn" class="btn btn-secondary hidden">Cancel</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Right Column: List & Filters -->
+      <section class="tasks-section">
+        <div class="controls-card">
+          <div class="search-bar">
+            <input type="text" id="search-input" placeholder="Search tasks by title...">
+          </div>
+          
+          <div class="filter-controls">
+            <div class="filter-group">
+              <label for="filter-status">Status:</label>
+              <select id="filter-status">
+                <option value="">All</option>
+                <option value="PENDING">Pending</option>
+                <option value="COMPLETED">Completed</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label for="filter-priority">Priority:</label>
+              <select id="filter-priority">
+                <option value="">All</option>
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label for="sort-by">Sort By:</label>
+              <select id="sort-by">
+                <option value="createdAt-desc">Newest First</option>
+                <option value="createdAt-asc">Oldest First</option>
+                <option value="dueDate-asc">Due Date (Soonest)</option>
+                <option value="priority-desc">Priority</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div id="loading" class="loading-state hidden">Loading tasks...</div>
+        <div id="task-list" class="task-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
