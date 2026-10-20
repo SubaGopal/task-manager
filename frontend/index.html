@@ -14,25 +14,33 @@
         <h1>Task Manager</h1>
         <p class="subtitle">Organize, track, and complete your tasks</p>
       </div>
-      <div class="stats-badge">
-        <span id="task-count">0</span> Tasks
+      <div class="header-actions">
+        <button id="theme-toggle" class="btn-theme" title="Toggle Dark/Light Mode">🌙</button>
+        <div class="stats-badge">
+          <span id="task-count">0</span> Tasks
+        </div>
       </div>
     </header>
+
     <div id="toast" class="toast hidden"></div>
+
     <main class="main-layout">
       <!-- Left Column: Form -->
       <section class="card form-card">
         <h2 id="form-title">Create New Task</h2>
         <form id="task-form">
           <input type="hidden" id="task-id">
+
           <div class="form-group">
             <label for="title">Title <span class="required">*</span></label>
             <input type="text" id="title" name="title" placeholder="e.g. Prepare presentation" required maxlength="100">
           </div>
+
           <div class="form-group">
             <label for="description">Description</label>
             <textarea id="description" name="description" rows="3" placeholder="Additional details..." maxlength="1000"></textarea>
           </div>
+
           <div class="form-row">
             <div class="form-group col">
               <label for="category">Category</label>
@@ -45,6 +53,7 @@
                 <option value="OTHER">🔖 Other</option>
               </select>
             </div>
+
             <div class="form-group col">
               <label for="priority">Priority</label>
               <select id="priority" name="priority">
@@ -54,16 +63,19 @@
               </select>
             </div>
           </div>
+
           <div class="form-group">
             <label for="dueDate">Due Date</label>
             <input type="date" id="dueDate" name="dueDate">
           </div>
+
           <div class="form-actions">
             <button type="submit" id="save-btn" class="btn btn-primary">Save Task</button>
             <button type="button" id="cancel-btn" class="btn btn-secondary hidden">Cancel</button>
           </div>
         </form>
       </section>
+
       <!-- Right Column: List & Filters -->
       <section class="tasks-section">
         <div class="controls-card">
@@ -84,6 +96,7 @@
                 <option value="OTHER">🔖 Other</option>
               </select>
             </div>
+
             <div class="filter-group">
               <label for="filter-status">Status:</label>
               <select id="filter-status">
@@ -92,6 +105,7 @@
                 <option value="COMPLETED">Completed</option>
               </select>
             </div>
+
             <div class="filter-group">
               <label for="filter-priority">Priority:</label>
               <select id="filter-priority">
@@ -101,6 +115,7 @@
                 <option value="HIGH">High</option>
               </select>
             </div>
+
             <div class="filter-group">
               <label for="sort-by">Sort By:</label>
               <select id="sort-by">
@@ -112,11 +127,13 @@
             </div>
           </div>
         </div>
+
         <div id="loading" class="loading-state hidden">Loading tasks...</div>
         <div id="task-list" class="task-list"></div>
       </section>
     </main>
   </div>
+
   <script src="js/app.js"></script>
 </body>
 </html>

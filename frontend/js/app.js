@@ -1,4 +1,5 @@
 const API_BASE = "http://localhost:8080/api/tasks";
+
 const taskForm = document.getElementById("task-form");
 const taskIdInput = document.getElementById("task-id");
 const titleInput = document.getElementById("title");
@@ -9,6 +10,7 @@ const dueDateInput = document.getElementById("dueDate");
 const formTitle = document.getElementById("form-title");
 const saveBtn = document.getElementById("save-btn");
 const cancelBtn = document.getElementById("cancel-btn");
+
 const searchInput = document.getElementById("search-input");
 const filterCategory = document.getElementById("filter-category");
 const filterStatus = document.getElementById("filter-status");
@@ -18,33 +20,59 @@ const taskList = document.getElementById("task-list");
 const taskCount = document.getElementById("task-count");
 const loadingEl = document.getElementById("loading");
 const toastEl = document.getElementById("toast");
+const themeToggle = document.getElementById("theme-toggle");
+
 let searchTimeout;
+
 document.addEventListener("DOMContentLoaded", () => {
+  initTheme();
   loadTasks();
   setupEventListeners();
 });
+
+// Theme Management
+function initTheme() {
+  const savedTheme = localStorage.getItem("app-theme") || "light";
+  document.documentElement.setAttribute("data-theme", savedTheme);
+  themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+
+  themeToggle.addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme");
+    const nextTheme = current === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", nextTheme);
+    themeToggle.textContent = nextTheme === "dark" ? "☀️" : "🌙";
+    localStorage.setItem("app-theme", nextTheme);
+  });
+}
+
 function setupEventListeners() {
   taskForm.addEventListener("submit", handleFormSubmit);
   cancelBtn.addEventListener("click", resetForm);
+
   searchInput.addEventListener("input", () => {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(loadTasks, 300);
   });
+
   filterCategory.addEventListener("change", loadTasks);
   filterStatus.addEventListener("change", loadTasks);
   filterPriority.addEventListener("change", loadTasks);
   sortBySelect.addEventListener("change", loadTasks);
 }
+
 async function loadTasks() {
   loadingEl.classList.remove("hidden");
+
   const params = new URLSearchParams();
   if (filterCategory.value) params.append("category", filterCategory.value);
   if (filterStatus.value) params.append("status", filterStatus.value);
   if (filterPriority.value) params.append("priority", filterPriority.value);
   if (searchInput.value.trim()) params.append("search", searchInput.value.trim());
+
   const [sortBy, direction] = sortBySelect.value.split("-");
   params.append("sortBy", sortBy);
   params.append("direction", direction);
+
   try {
     const res = await fetch(`${API_BASE}?${params.toString()}`);
     if (!res.ok) throw new Error("Failed to load tasks");
@@ -57,6 +85,7 @@ async function loadTasks() {
     loadingEl.classList.add("hidden");
   }
 }
+
 const categoryIcons = {
   WORK: "💼 Work",
   PERSONAL: "🏠 Personal",
@@ -65,17 +94,20 @@ const categoryIcons = {
   FINANCE: "💰 Finance",
   OTHER: "🔖 Other"
 };
+
 function renderTasks(tasks) {
   taskCount.textContent = tasks.length;
   if (tasks.length === 0) {
     taskList.innerHTML = `<div class="empty-state"><p>No tasks found.</p><small>Create one using the form on the left!</small></div>`;
     return;
   }
+
   taskList.innerHTML = tasks.map(task => {
     const isCompleted = task.status === "COMPLETED";
     const formattedDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "No due date";
     const cat = task.category || "PERSONAL";
     const catLabel = categoryIcons[cat] || cat;
+
     return `
       <div class="task-item ${isCompleted ? "completed" : ""}">
         <div class="task-left">
@@ -99,6 +131,7 @@ function renderTasks(tasks) {
     `;
   }).join("");
 }
+
 async function handleFormSubmit(e) {
   e.preventDefault();
   const id = taskIdInput.value;
@@ -109,9 +142,11 @@ async function handleFormSubmit(e) {
     priority: priorityInput.value,
     dueDate: dueDateInput.value || null
   };
+
   const isEdit = Boolean(id);
   const url = isEdit ? `${API_BASE}/${id}` : API_BASE;
   const method = isEdit ? "PUT" : "POST";
+
   try {
     const res = await fetch(url, {
       method: method,
@@ -126,6 +161,7 @@ async function handleFormSubmit(e) {
     showToast(error.message, "error");
   }
 }
+
 async function toggleTaskStatus(id, isCompleted) {
   const status = isCompleted ? "COMPLETED" : "PENDING";
   try {
@@ -142,6 +178,7 @@ async function toggleTaskStatus(id, isCompleted) {
     loadTasks();
   }
 }
+
 async function editTask(id) {
   try {
     const res = await fetch(`${API_BASE}/${id}`);
@@ -160,6 +197,7 @@ async function editTask(id) {
     showToast("Failed to load task", "error");
   }
 }
+
 async function confirmDelete(id) {
   if (!confirm("Are you sure you want to delete this task?")) return;
   try {
@@ -171,6 +209,7 @@ async function confirmDelete(id) {
     showToast("Failed to delete task", "error");
   }
 }
+
 function resetForm() {
   taskIdInput.value = "";
   taskForm.reset();
@@ -178,12 +217,14 @@ function resetForm() {
   saveBtn.textContent = "Save Task";
   cancelBtn.classList.add("hidden");
 }
+
 function showToast(message, type = "info") {
   toastEl.textContent = message;
   toastEl.className = `toast ${type}`;
   toastEl.classList.remove("hidden");
   setTimeout(() => toastEl.classList.add("hidden"), 3000);
 }
+
 function escapeHtml(str) {
   if (!str) return "";
   return str.replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[m]);
