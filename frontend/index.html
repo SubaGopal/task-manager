@@ -76,14 +76,22 @@
         <form id="task-form">
           <input type="hidden" id="task-id">
 
+          <!-- Title with Voice Mic Button -->
           <div class="form-group">
             <label for="title">Title <span class="required">*</span></label>
-            <input type="text" id="title" name="title" placeholder="e.g. Launch new website" required maxlength="100">
+            <div class="input-with-voice">
+              <input type="text" id="title" name="title" placeholder="e.g. Launch new website" required maxlength="100">
+              <button type="button" id="voice-title-btn" class="btn-voice" title="Speak to dictate title">🎙️</button>
+            </div>
           </div>
 
+          <!-- Description with Voice Mic Button -->
           <div class="form-group">
             <label for="description">Description</label>
-            <textarea id="description" name="description" rows="2" placeholder="Additional details..." maxlength="1000"></textarea>
+            <div class="textarea-with-voice">
+              <textarea id="description" name="description" rows="2" placeholder="Additional details..." maxlength="1000"></textarea>
+              <button type="button" id="voice-desc-btn" class="btn-voice btn-voice-desc" title="Speak to dictate description">🎙️</button>
+            </div>
           </div>
 
           <div class="form-row">
@@ -146,7 +154,6 @@
             <div class="search-bar">
               <input type="text" id="search-input" placeholder="Search tasks by title... (Press '/')">
             </div>
-            <!-- 3-Way View Switcher -->
             <div class="view-switcher">
               <button id="view-list-btn" class="view-btn active" title="List View (Press 'V')">📋 List</button>
               <button id="view-kanban-btn" class="view-btn" title="Kanban Board View (Press 'V')">📌 Kanban</button>

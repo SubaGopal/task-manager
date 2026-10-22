@@ -42,6 +42,36 @@ body { background: var(--bg-main); color: var(--text-main); line-height: 1.5; pa
 }
 .btn-theme:hover { transform: scale(1.08); }
 
+/* Voice Input Styles */
+.input-with-voice, .textarea-with-voice {
+  position: relative; display: flex; align-items: center;
+}
+.input-with-voice input {
+  padding-right: 40px !important;
+}
+.textarea-with-voice textarea {
+  padding-right: 40px !important;
+}
+.btn-voice {
+  position: absolute; right: 6px; background: none; border: none; font-size: 1.15rem;
+  width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; transition: all 0.2s;
+}
+.btn-voice:hover { background: var(--border); transform: scale(1.1); }
+.btn-voice-desc { top: 8px; }
+
+/* Mic Pulsing Red State */
+.btn-voice.listening {
+  background: #ef4444 !important;
+  color: #fff !important;
+  animation: pulse-mic 1.2s infinite;
+}
+@keyframes pulse-mic {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
 /* Quick Date Presets */
 .quick-dates { display: flex; gap: 4px; }
 .btn-preset {
@@ -186,9 +216,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
   display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center;
   font-weight: 700; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px;
 }
-.calendar-grid-days {
-  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
-}
+.calendar-grid-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .cal-day-cell {
   background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px;
   min-height: 85px; padding: 6px; display: flex; flex-direction: column; gap: 4px;

@@ -11,6 +11,10 @@ const formTitle = document.getElementById("form-title");
 const saveBtn = document.getElementById("save-btn");
 const cancelBtn = document.getElementById("cancel-btn");
 
+// Voice Input Buttons
+const voiceTitleBtn = document.getElementById("voice-title-btn");
+const voiceDescBtn = document.getElementById("voice-desc-btn");
+
 // Subtask Form Elements
 const newSubtaskInput = document.getElementById("new-subtask-input");
 const addSubtaskBtn = document.getElementById("add-subtask-btn");
@@ -73,9 +77,56 @@ document.addEventListener("DOMContentLoaded", () => {
   initViewMode();
   initKeyboardShortcuts();
   initCalendarNav();
+  initVoiceInput();
   loadTasks();
   setupEventListeners();
 });
+
+// Voice Dictation (Web Speech Recognition API)
+function initVoiceInput() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    voiceTitleBtn.style.display = "none";
+    voiceDescBtn.style.display = "none";
+    return;
+  }
+
+  function startDictation(targetInput, triggerBtn) {
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-IN"; // English/Indian accent or Tamil
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      triggerBtn.classList.add("listening");
+      showToast("🎙️ Listening... Speak now!", "info");
+    };
+
+    recognition.onresult = (event) => {
+      const speechResult = event.results[0][0].transcript;
+      if (targetInput.value) {
+        targetInput.value += " " + speechResult;
+      } else {
+        targetInput.value = speechResult;
+      }
+      showToast(`Captured: "${speechResult}"`, "success");
+    };
+
+    recognition.onerror = () => {
+      showToast("Voice recognition failed. Check mic permissions.", "error");
+    };
+
+    recognition.onend = () => {
+      triggerBtn.classList.remove("listening");
+    };
+
+    recognition.start();
+  }
+
+  voiceTitleBtn.addEventListener("click", () => startDictation(titleInput, voiceTitleBtn));
+  voiceDescBtn.addEventListener("click", () => startDictation(descInput, voiceDescBtn));
+}
 
 // Smart Quick Date Setter
 function setQuickDate(daysOffset) {
