@@ -26,15 +26,8 @@
 body { background: var(--bg-main); color: var(--text-main); line-height: 1.5; padding: 24px 16px; position: relative; }
 .app-container { max-width: 1250px; margin: 0 auto; position: relative; z-index: 10; }
 
-/* Confetti Fullscreen Canvas */
 #confetti-canvas {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
-  z-index: 9999;
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999;
 }
 
 .app-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
@@ -43,40 +36,28 @@ body { background: var(--bg-main); color: var(--text-main); line-height: 1.5; pa
 
 .header-actions { display: flex; align-items: center; gap: 10px; }
 .btn-theme {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  font-size: 1.2rem;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  background: var(--bg-card); border: 1px solid var(--border); font-size: 1.2rem;
+  width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 .btn-theme:hover { transform: scale(1.08); }
 
+/* Quick Date Presets */
+.quick-dates { display: flex; gap: 4px; }
+.btn-preset {
+  background: var(--bg-main); border: 1px solid var(--border); border-radius: 4px;
+  font-size: 0.72rem; padding: 2px 6px; cursor: pointer; color: var(--text-muted); font-weight: 500;
+}
+.btn-preset:hover { background: var(--border); color: var(--primary); }
+
 /* Dashboard Cards */
 .dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;
 }
-
 .stat-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+  display: flex; align-items: center; gap: 14px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-
 .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-color: var(--primary); }
 .stat-icon { font-size: 1.75rem; width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--bg-main); }
 .stat-info { display: flex; flex-direction: column; }
@@ -104,8 +85,7 @@ body { background: var(--bg-main); color: var(--text-main); line-height: 1.5; pa
 
 input[type="text"], input[type="date"], select, textarea {
   width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem;
-  background-color: var(--input-bg);
-  color: var(--text-main);
+  background-color: var(--input-bg); color: var(--text-main);
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
 .form-row { display: flex; gap: 12px; }
@@ -124,7 +104,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .controls-top-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .controls-top-row .search-bar { flex: 1; min-width: 200px; }
 
-/* View Switcher */
+/* 3-Way View Switcher */
 .view-switcher { display: flex; background: var(--bg-main); padding: 3px; border-radius: 8px; border: 1px solid var(--border); gap: 2px; }
 .view-btn {
   background: none; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 600;
@@ -147,10 +127,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .btn-remove-subtask { background: none; border: none; color: var(--danger); font-size: 1rem; cursor: pointer; padding: 0 4px; }
 
 /* Subtasks in Cards */
-.card-subtasks {
-  margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border);
-  display: flex; flex-direction: column; gap: 6px;
-}
+.card-subtasks { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 6px; }
 .subtasks-progress-bar { height: 5px; background: var(--border); border-radius: 9999px; overflow: hidden; margin-bottom: 2px; }
 .subtasks-progress-fill { height: 100%; background: var(--primary); border-radius: 9999px; }
 .subtask-card-row { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; }
@@ -159,13 +136,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 /* Traditional List View */
 .task-list { display: flex; flex-direction: column; gap: 12px; }
 .task-item {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px;
+  display: flex; justify-content: space-between; align-items: flex-start;
 }
 .task-item:hover { transform: translateX(2px); box-shadow: 0 3px 6px rgba(0,0,0,0.06); }
 .task-item.completed { opacity: 0.6; background: rgba(0,0,0,0.05); }
@@ -181,57 +153,55 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .task-meta { display: flex; gap: 8px; align-items: center; font-size: 0.75rem; flex-wrap: wrap; }
 
 /* Kanban Board View */
-.kanban-board {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  align-items: start;
-}
+.kanban-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
 @media (max-width: 1024px) { .kanban-board { grid-template-columns: 1fr; } }
 
 .kanban-col {
-  background: var(--bg-main);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 400px;
+  background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 14px;
+  display: flex; flex-direction: column; gap: 12px; min-height: 400px;
 }
-
-.kanban-col-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--border);
-}
+.kanban-col-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
 .kanban-title { font-size: 0.9rem; font-weight: 700; color: var(--text-main); }
-.kanban-count {
-  background: var(--border); font-size: 0.75rem; font-weight: 700;
-  padding: 2px 8px; border-radius: 9999px; color: var(--text-muted);
-}
+.kanban-count { background: var(--border); font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px; color: var(--text-muted); }
 .focus-header { border-bottom-color: #f59e0b; }
 .done-header { border-bottom-color: var(--success); }
 
 .kanban-cards { display: flex; flex-direction: column; gap: 10px; }
 .kanban-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px;
 }
 .kanban-card:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.08); border-color: var(--primary); }
 .kanban-card-title { font-size: 0.92rem; font-weight: 600; color: var(--text-main); }
 .kanban-card-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
-.kanban-card-footer {
-  display: flex; justify-content: space-between; align-items: center; margin-top: 4px;
+.kanban-card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+
+/* Calendar View */
+.calendar-view { padding: 20px; }
+.calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.calendar-header h3 { font-size: 1.15rem; font-weight: 700; color: var(--text-main); }
+.calendar-nav { display: flex; gap: 6px; }
+
+.calendar-grid-weekdays {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center;
+  font-weight: 700; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px;
 }
+.calendar-grid-days {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+}
+.cal-day-cell {
+  background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px;
+  min-height: 85px; padding: 6px; display: flex; flex-direction: column; gap: 4px;
+}
+.cal-day-cell.other-month { opacity: 0.35; }
+.cal-day-cell.today { border: 2px solid var(--primary); }
+.cal-date-number { font-size: 0.8rem; font-weight: 700; color: var(--text-main); }
+
+.cal-task-pill {
+  font-size: 0.7rem; padding: 2px 5px; border-radius: 4px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; cursor: pointer; font-weight: 500;
+}
+.cal-task-pill.completed { text-decoration: line-through; opacity: 0.6; }
 
 /* Badges */
 .badge { padding: 2px 8px; border-radius: 9999px; font-weight: 600; font-size: 0.72rem; }

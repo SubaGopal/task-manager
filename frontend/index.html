@@ -109,8 +109,16 @@
             </div>
           </div>
 
+          <!-- Due Date with Smart Quick Presets -->
           <div class="form-group">
-            <label for="dueDate">Due Date</label>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <label for="dueDate" style="margin-bottom:0;">Due Date</label>
+              <div class="quick-dates">
+                <button type="button" class="btn-preset" onclick="setQuickDate(0)">Today</button>
+                <button type="button" class="btn-preset" onclick="setQuickDate(1)">Tomorrow</button>
+                <button type="button" class="btn-preset" onclick="setQuickDate(7)">+1 Week</button>
+              </div>
+            </div>
             <input type="date" id="dueDate" name="dueDate">
           </div>
 
@@ -138,9 +146,11 @@
             <div class="search-bar">
               <input type="text" id="search-input" placeholder="Search tasks by title... (Press '/')">
             </div>
+            <!-- 3-Way View Switcher -->
             <div class="view-switcher">
               <button id="view-list-btn" class="view-btn active" title="List View (Press 'V')">📋 List</button>
               <button id="view-kanban-btn" class="view-btn" title="Kanban Board View (Press 'V')">📌 Kanban</button>
+              <button id="view-calendar-btn" class="view-btn" title="Calendar View (Press 'C')">📅 Calendar</button>
             </div>
           </div>
           
@@ -220,6 +230,22 @@
             <div class="kanban-cards" id="cards-done"></div>
           </div>
         </div>
+
+        <!-- 3. Monthly Calendar View -->
+        <div id="calendar-view" class="calendar-view card hidden">
+          <div class="calendar-header">
+            <h3 id="calendar-month-year">Month Year</h3>
+            <div class="calendar-nav">
+              <button id="cal-prev" class="btn btn-secondary btn-sm">◀ Prev</button>
+              <button id="cal-today" class="btn btn-secondary btn-sm">Today</button>
+              <button id="cal-next" class="btn btn-secondary btn-sm">Next ▶</button>
+            </div>
+          </div>
+          <div class="calendar-grid-weekdays">
+            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+          </div>
+          <div id="calendar-grid-days" class="calendar-grid-days"></div>
+        </div>
       </section>
     </main>
   </div>
@@ -234,7 +260,7 @@
       <div class="shortcuts-list">
         <div class="shortcut-row"><kbd>N</kbd> <span>Focus & Create New Task</span></div>
         <div class="shortcut-row"><kbd>/</kbd> or <kbd>F</kbd> <span>Search Tasks</span></div>
-        <div class="shortcut-row"><kbd>V</kbd> <span>Toggle List / Kanban View</span></div>
+        <div class="shortcut-row"><kbd>V</kbd> <span>Toggle List / Kanban / Calendar</span></div>
         <div class="shortcut-row"><kbd>T</kbd> <span>Toggle Dark / Light Theme</span></div>
         <div class="shortcut-row"><kbd>Esc</kbd> <span>Cancel Edit / Close Modal</span></div>
       </div>
