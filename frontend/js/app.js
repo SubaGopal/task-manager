@@ -17,11 +17,19 @@ const filterStatus = document.getElementById("filter-status");
 const filterPriority = document.getElementById("filter-priority");
 const sortBySelect = document.getElementById("sort-by");
 const taskList = document.getElementById("task-list");
-const taskCount = document.getElementById("task-count");
 const loadingEl = document.getElementById("loading");
 const toastEl = document.getElementById("toast");
 const themeToggle = document.getElementById("theme-toggle");
 
+// Stats Elements
+const statTotal = document.getElementById("stat-total");
+const statPending = document.getElementById("stat-pending");
+const statCompleted = document.getElementById("stat-completed");
+const statOverdue = document.getElementById("stat-overdue");
+const progressText = document.getElementById("progress-text");
+const progressFill = document.getElementById("progress-fill");
+
+let allTasksData = [];
 let searchTimeout;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -30,7 +38,6 @@ document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
 });
 
-// Theme Management
 function initTheme() {
   const savedTheme = localStorage.getItem("app-theme") || "light";
   document.documentElement.setAttribute("data-theme", savedTheme);
@@ -58,6 +65,19 @@ function setupEventListeners() {
   filterStatus.addEventListener("change", loadTasks);
   filterPriority.addEventListener("change", loadTasks);
   sortBySelect.addEventListener("change", loadTasks);
+
+  // Click on stat cards for quick filtering
+  document.querySelectorAll(".stat-card").forEach(card => {
+    card.addEventListener("click", () => {
+      const filter = card.dataset.filter;
+      if (filter === "ALL") {
+        filterStatus.value = "";
+      } else if (filter === "PENDING" || filter === "COMPLETED") {
+        filterStatus.value = filter;
+      }
+      loadTasks();
+    });
+  });
 }
 
 async function loadTasks() {
@@ -77,6 +97,8 @@ async function loadTasks() {
     const res = await fetch(`${API_BASE}?${params.toString()}`);
     if (!res.ok) throw new Error("Failed to load tasks");
     const tasks = await res.json();
+    allTasksData = tasks;
+    updateAnalytics(tasks);
     renderTasks(tasks);
   } catch (error) {
     showToast("Server connection error", "error");
@@ -84,6 +106,38 @@ async function loadTasks() {
   } finally {
     loadingEl.classList.add("hidden");
   }
+}
+
+function updateAnalytics(tasks) {
+  const now = new Date();
+  now.setHours(0,0,0,0);
+
+  const total = tasks.length;
+  let completed = 0;
+  let pending = 0;
+  let overdue = 0;
+
+  tasks.forEach(t => {
+    if (t.status === "COMPLETED") {
+      completed++;
+    } else {
+      pending++;
+      if (t.dueDate) {
+        const d = new Date(t.dueDate);
+        d.setHours(0,0,0,0);
+        if (d < now) overdue++;
+      }
+    }
+  });
+
+  statTotal.textContent = total;
+  statPending.textContent = pending;
+  statCompleted.textContent = completed;
+  statOverdue.textContent = overdue;
+
+  const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+  progressText.textContent = `${percent}% Completed`;
+  progressFill.style.width = `${percent}%`;
 }
 
 const categoryIcons = {
@@ -96,20 +150,33 @@ const categoryIcons = {
 };
 
 function renderTasks(tasks) {
-  taskCount.textContent = tasks.length;
   if (tasks.length === 0) {
     taskList.innerHTML = `<div class="empty-state"><p>No tasks found.</p><small>Create one using the form on the left!</small></div>`;
     return;
   }
 
+  const now = new Date();
+  now.setHours(0,0,0,0);
+
   taskList.innerHTML = tasks.map(task => {
     const isCompleted = task.status === "COMPLETED";
-    const formattedDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "No due date";
     const cat = task.category || "PERSONAL";
     const catLabel = categoryIcons[cat] || cat;
 
+    let isOverdue = false;
+    let formattedDate = "No due date";
+
+    if (task.dueDate) {
+      const d = new Date(task.dueDate);
+      formattedDate = d.toLocaleDateString();
+      d.setHours(0,0,0,0);
+      if (!isCompleted && d < now) {
+        isOverdue = true;
+      }
+    }
+
     return `
-      <div class="task-item ${isCompleted ? "completed" : ""}">
+      <div class="task-item ${isCompleted ? "completed" : ""} ${isOverdue ? "is-overdue" : ""}">
         <div class="task-left">
           <input type="checkbox" class="task-checkbox" ${isCompleted ? "checked" : ""} 
                  onchange="toggleTaskStatus(${task.id}, this.checked)">
@@ -120,6 +187,7 @@ function renderTasks(tasks) {
               <span class="badge-cat cat-${cat.toLowerCase()}">${catLabel}</span>
               <span class="badge badge-${task.priority.toLowerCase()}">${task.priority}</span>
               <span class="due-date">📅 ${formattedDate}</span>
+              ${isOverdue ? `<span class="badge badge-overdue">🚨 OVERDUE</span>` : ""}
             </div>
           </div>
         </div>
