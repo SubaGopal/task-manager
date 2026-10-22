@@ -23,8 +23,19 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; transition: background-color 0.2s, border-color 0.2s, color 0.2s; }
-body { background: var(--bg-main); color: var(--text-main); line-height: 1.5; padding: 24px 16px; }
-.app-container { max-width: 1250px; margin: 0 auto; }
+body { background: var(--bg-main); color: var(--text-main); line-height: 1.5; padding: 24px 16px; position: relative; }
+.app-container { max-width: 1250px; margin: 0 auto; position: relative; z-index: 10; }
+
+/* Confetti Fullscreen Canvas */
+#confetti-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+}
 
 .app-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .app-header h1 { font-size: 1.75rem; font-weight: 700; color: var(--text-main); }
@@ -86,6 +97,7 @@ body { background: var(--bg-main); color: var(--text-main); line-height: 1.5; pa
 
 .card { background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border); padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
 .form-card h2 { font-size: 1.15rem; margin-bottom: 16px; color: var(--text-main); }
+.hotkey-hint { font-size: 0.72rem; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
 .form-group { margin-bottom: 14px; }
 .form-group label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 4px; color: var(--text-main); }
 .required { color: var(--danger); }
@@ -251,6 +263,28 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 
 .due-date { color: var(--text-muted); }
 .task-actions { display: flex; gap: 6px; margin-left: 12px; }
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+  z-index: 1000; backdrop-filter: blur(2px);
+}
+.modal-card {
+  background: var(--bg-card); border-radius: 12px; padding: 20px;
+  max-width: 420px; width: 90%; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-header h3 { font-size: 1.1rem; color: var(--text-main); }
+.btn-close-modal { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted); }
+
+.shortcuts-list { display: flex; flex-direction: column; gap: 10px; }
+.shortcut-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.88rem; }
+kbd {
+  background: var(--bg-main); border: 1px solid var(--border); border-radius: 4px;
+  padding: 2px 8px; font-weight: 700; font-family: monospace; font-size: 0.82rem; color: var(--primary);
+  box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+}
 
 .empty-state { text-align: center; padding: 40px 16px; color: var(--text-muted); background: var(--bg-card); border: 1px dashed var(--border); border-radius: 12px; }
 .loading-state { text-align: center; padding: 20px; color: var(--primary); }

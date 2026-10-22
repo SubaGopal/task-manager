@@ -8,6 +8,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  <!-- Fullscreen Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
   <div class="app-container">
     <header class="app-header">
       <div class="header-content">
@@ -15,6 +18,7 @@
         <p class="subtitle">Organize, track, and complete your tasks</p>
       </div>
       <div class="header-actions">
+        <button id="shortcuts-btn" class="btn btn-secondary btn-sm" title="View Keyboard Shortcuts">⌨️ Keys</button>
         <button id="export-btn" class="btn btn-secondary btn-sm" title="Export tasks to CSV file">📥 Export CSV</button>
         <button id="theme-toggle" class="btn-theme" title="Toggle Dark/Light Mode">🌙</button>
       </div>
@@ -68,7 +72,7 @@
     <main class="main-layout">
       <!-- Left Column: Form -->
       <section class="card form-card">
-        <h2 id="form-title">Create New Task</h2>
+        <h2 id="form-title">Create New Task <span class="hotkey-hint">(Press 'N')</span></h2>
         <form id="task-form">
           <input type="hidden" id="task-id">
 
@@ -129,16 +133,14 @@
 
       <!-- Right Column: Tasks Section -->
       <section class="tasks-section">
-        <!-- Controls & View Mode Toggle -->
         <div class="controls-card">
           <div class="controls-top-row">
             <div class="search-bar">
-              <input type="text" id="search-input" placeholder="Search tasks by title...">
+              <input type="text" id="search-input" placeholder="Search tasks by title... (Press '/')">
             </div>
-            <!-- View Switcher -->
             <div class="view-switcher">
-              <button id="view-list-btn" class="view-btn active" title="List View">📋 List</button>
-              <button id="view-kanban-btn" class="view-btn" title="Kanban Board View">📌 Kanban</button>
+              <button id="view-list-btn" class="view-btn active" title="List View (Press 'V')">📋 List</button>
+              <button id="view-kanban-btn" class="view-btn" title="Kanban Board View (Press 'V')">📌 Kanban</button>
             </div>
           </div>
           
@@ -220,6 +222,23 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <!-- Keyboard Shortcuts Modal -->
+  <div id="shortcuts-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>⌨️ Keyboard Shortcuts</h3>
+        <button id="close-modal-btn" class="btn-close-modal">×</button>
+      </div>
+      <div class="shortcuts-list">
+        <div class="shortcut-row"><kbd>N</kbd> <span>Focus & Create New Task</span></div>
+        <div class="shortcut-row"><kbd>/</kbd> or <kbd>F</kbd> <span>Search Tasks</span></div>
+        <div class="shortcut-row"><kbd>V</kbd> <span>Toggle List / Kanban View</span></div>
+        <div class="shortcut-row"><kbd>T</kbd> <span>Toggle Dark / Light Theme</span></div>
+        <div class="shortcut-row"><kbd>Esc</kbd> <span>Cancel Edit / Close Modal</span></div>
+      </div>
+    </div>
   </div>
 
   <script src="js/app.js"></script>

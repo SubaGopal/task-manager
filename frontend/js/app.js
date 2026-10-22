@@ -33,6 +33,11 @@ const loadingEl = document.getElementById("loading");
 const toastEl = document.getElementById("toast");
 const themeToggle = document.getElementById("theme-toggle");
 
+// Modal Elements
+const shortcutsBtn = document.getElementById("shortcuts-btn");
+const shortcutsModal = document.getElementById("shortcuts-modal");
+const closeModalBtn = document.getElementById("close-modal-btn");
+
 // Stats Elements
 const statTotal = document.getElementById("stat-total");
 const statPending = document.getElementById("stat-pending");
@@ -50,30 +55,35 @@ const countFocus = document.getElementById("count-focus");
 const countDone = document.getElementById("count-done");
 
 let allTasksData = [];
-let currentView = "list"; // "list" or "kanban"
+let currentView = "list";
 let searchTimeout;
 
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   initViewMode();
+  initKeyboardShortcuts();
   loadTasks();
   setupEventListeners();
 });
 
+// Theme Management
 function initTheme() {
   const savedTheme = localStorage.getItem("app-theme") || "light";
   document.documentElement.setAttribute("data-theme", savedTheme);
   themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
 
-  themeToggle.addEventListener("click", () => {
-    const current = document.documentElement.getAttribute("data-theme");
-    const nextTheme = current === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", nextTheme);
-    themeToggle.textContent = nextTheme === "dark" ? "☀️" : "🌙";
-    localStorage.setItem("app-theme", nextTheme);
-  });
+  themeToggle.addEventListener("click", toggleTheme);
 }
 
+function toggleTheme() {
+  const current = document.documentElement.getAttribute("data-theme");
+  const nextTheme = current === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", nextTheme);
+  themeToggle.textContent = nextTheme === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("app-theme", nextTheme);
+}
+
+// View Mode
 function initViewMode() {
   currentView = localStorage.getItem("app-view") || "list";
   switchView(currentView);
@@ -99,6 +109,95 @@ function switchView(view) {
   }
 }
 
+// Power User Keyboard Shortcuts
+function initKeyboardShortcuts() {
+  shortcutsBtn.addEventListener("click", () => shortcutsModal.classList.remove("hidden"));
+  closeModalBtn.addEventListener("click", () => shortcutsModal.classList.add("hidden"));
+  shortcutsModal.addEventListener("click", (e) => {
+    if (e.target === shortcutsModal) shortcutsModal.classList.add("hidden");
+  });
+
+  document.addEventListener("keydown", (e) => {
+    const isTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName);
+
+    if (e.key === "Escape") {
+      shortcutsModal.classList.add("hidden");
+      resetForm();
+      document.activeElement.blur();
+      return;
+    }
+
+    if (isTyping) return;
+
+    if (e.key === "n" || e.key === "N") {
+      e.preventDefault();
+      titleInput.focus();
+    } else if (e.key === "/" || e.key === "f" || e.key === "F") {
+      e.preventDefault();
+      searchInput.focus();
+    } else if (e.key === "v" || e.key === "V") {
+      e.preventDefault();
+      switchView(currentView === "list" ? "kanban" : "list");
+    } else if (e.key === "t" || e.key === "T") {
+      e.preventDefault();
+      toggleTheme();
+    }
+  });
+}
+
+// Canvas Confetti Celebration Explosion
+function triggerConfetti() {
+  const canvas = document.getElementById("confetti-canvas");
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const particles = [];
+  const colors = ["#4f46e5", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#3b82f6"];
+
+  for (let i = 0; i < 90; i++) {
+    particles.push({
+      x: canvas.width / 2,
+      y: canvas.height / 2 + 100,
+      r: Math.random() * 6 + 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      vx: (Math.random() - 0.5) * 16,
+      vy: (Math.random() - 0.7) * 18,
+      gravity: 0.4,
+      alpha: 1,
+      decay: Math.random() * 0.015 + 0.015
+    });
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let active = false;
+
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += p.gravity;
+      p.alpha -= p.decay;
+
+      if (p.alpha > 0) {
+        active = true;
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    });
+
+    if (active) requestAnimationFrame(render);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  render();
+}
+
 function setupEventListeners() {
   taskForm.addEventListener("submit", handleFormSubmit);
   cancelBtn.addEventListener("click", resetForm);
@@ -120,17 +219,13 @@ function setupEventListeners() {
   filterStatus.addEventListener("change", loadTasks);
   filterPriority.addEventListener("change", loadTasks);
   sortBySelect.addEventListener("change", loadTasks);
-
   exportBtn.addEventListener("click", exportTasksToCSV);
 
   document.querySelectorAll(".stat-card").forEach(card => {
     card.addEventListener("click", () => {
       const filter = card.dataset.filter;
-      if (filter === "ALL") {
-        filterStatus.value = "";
-      } else if (filter === "PENDING" || filter === "COMPLETED") {
-        filterStatus.value = filter;
-      }
+      if (filter === "ALL") filterStatus.value = "";
+      else if (filter === "PENDING" || filter === "COMPLETED") filterStatus.value = filter;
       loadTasks();
     });
   });
@@ -228,7 +323,6 @@ const categoryIcons = {
   OTHER: "🔖 Other"
 };
 
-// 1. Render Traditional List View
 function renderTasks(tasks) {
   if (tasks.length === 0) {
     taskList.innerHTML = `<div class="empty-state"><p>No tasks found.</p><small>Create one using the form on the left!</small></div>`;
@@ -307,7 +401,6 @@ function renderTasks(tasks) {
   }).join("");
 }
 
-// 2. Render Kanban Board View
 function renderKanban(tasks) {
   const todoList = tasks.filter(t => t.status === "PENDING" && t.priority !== "HIGH");
   const focusList = tasks.filter(t => t.status === "PENDING" && t.priority === "HIGH");
@@ -353,7 +446,6 @@ function renderKanbanCard(task, colType) {
   `;
 }
 
-// Export Tasks to CSV
 function exportTasksToCSV() {
   if (allTasksData.length === 0) {
     showToast("No tasks available to export", "error");
@@ -393,6 +485,8 @@ async function toggleSubtaskDone(taskId, subtaskIdx, isDone) {
 
   if (subtasks[subtaskIdx]) subtasks[subtaskIdx].done = isDone;
   const allDone = subtasks.length > 0 && subtasks.every(s => s.done);
+
+  if (isDone) triggerConfetti();
 
   const payload = {
     title: task.title,
@@ -450,6 +544,11 @@ async function handleFormSubmit(e) {
 
 async function toggleTaskStatus(id, isCompleted) {
   const status = isCompleted ? "COMPLETED" : "PENDING";
+
+  if (isCompleted) {
+    triggerConfetti();
+  }
+
   try {
     const res = await fetch(`${API_BASE}/${id}/status`, {
       method: "PATCH",
@@ -457,7 +556,7 @@ async function toggleTaskStatus(id, isCompleted) {
       body: JSON.stringify({ status })
     });
     if (!res.ok) throw new Error("Status update failed");
-    showToast(`Task marked as ${status.toLowerCase()}`, "success");
+    showToast(`Task marked as ${status.toLowerCase()} 🎉`, "success");
     loadTasks();
   } catch (error) {
     showToast("Failed to update status", "error");
