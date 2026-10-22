@@ -15,6 +15,7 @@
         <p class="subtitle">Organize, track, and complete your tasks</p>
       </div>
       <div class="header-actions">
+        <button id="export-btn" class="btn btn-secondary btn-sm" title="Export tasks to CSV file">📥 Export CSV</button>
         <button id="theme-toggle" class="btn-theme" title="Toggle Dark/Light Mode">🌙</button>
       </div>
     </header>
@@ -109,7 +110,7 @@
             <input type="date" id="dueDate" name="dueDate">
           </div>
 
-          <!-- Subtasks Builder inside Form -->
+          <!-- Subtasks Builder -->
           <div class="form-group subtasks-builder">
             <label>Subtasks Checklist</label>
             <div class="subtask-input-row">
@@ -126,11 +127,19 @@
         </form>
       </section>
 
-      <!-- Right Column: List & Filters -->
+      <!-- Right Column: Tasks Section -->
       <section class="tasks-section">
+        <!-- Controls & View Mode Toggle -->
         <div class="controls-card">
-          <div class="search-bar">
-            <input type="text" id="search-input" placeholder="Search tasks by title...">
+          <div class="controls-top-row">
+            <div class="search-bar">
+              <input type="text" id="search-input" placeholder="Search tasks by title...">
+            </div>
+            <!-- View Switcher -->
+            <div class="view-switcher">
+              <button id="view-list-btn" class="view-btn active" title="List View">📋 List</button>
+              <button id="view-kanban-btn" class="view-btn" title="Kanban Board View">📌 Kanban</button>
+            </div>
           </div>
           
           <div class="filter-controls">
@@ -179,7 +188,36 @@
         </div>
 
         <div id="loading" class="loading-state hidden">Loading tasks...</div>
+
+        <!-- 1. Traditional List View -->
         <div id="task-list" class="task-list"></div>
+
+        <!-- 2. Modern Kanban Board View -->
+        <div id="kanban-board" class="kanban-board hidden">
+          <div class="kanban-col" id="col-todo">
+            <div class="kanban-col-header">
+              <span class="kanban-title">⏳ To Do</span>
+              <span class="kanban-count" id="count-todo">0</span>
+            </div>
+            <div class="kanban-cards" id="cards-todo"></div>
+          </div>
+
+          <div class="kanban-col" id="col-focus">
+            <div class="kanban-col-header focus-header">
+              <span class="kanban-title">🔥 High Priority Focus</span>
+              <span class="kanban-count" id="count-focus">0</span>
+            </div>
+            <div class="kanban-cards" id="cards-focus"></div>
+          </div>
+
+          <div class="kanban-col" id="col-done">
+            <div class="kanban-col-header done-header">
+              <span class="kanban-title">✅ Completed</span>
+              <span class="kanban-count" id="count-done">0</span>
+            </div>
+            <div class="kanban-cards" id="cards-done"></div>
+          </div>
+        </div>
       </section>
     </main>
   </div>

@@ -15,14 +15,20 @@ const cancelBtn = document.getElementById("cancel-btn");
 const newSubtaskInput = document.getElementById("new-subtask-input");
 const addSubtaskBtn = document.getElementById("add-subtask-btn");
 const formSubtaskList = document.getElementById("form-subtask-list");
-let currentFormSubtasks = []; // Array of strings in form
+let currentFormSubtasks = [];
 
+// Controls & Views
 const searchInput = document.getElementById("search-input");
 const filterCategory = document.getElementById("filter-category");
 const filterStatus = document.getElementById("filter-status");
 const filterPriority = document.getElementById("filter-priority");
 const sortBySelect = document.getElementById("sort-by");
 const taskList = document.getElementById("task-list");
+const kanbanBoard = document.getElementById("kanban-board");
+const viewListBtn = document.getElementById("view-list-btn");
+const viewKanbanBtn = document.getElementById("view-kanban-btn");
+const exportBtn = document.getElementById("export-btn");
+
 const loadingEl = document.getElementById("loading");
 const toastEl = document.getElementById("toast");
 const themeToggle = document.getElementById("theme-toggle");
@@ -35,11 +41,21 @@ const statOverdue = document.getElementById("stat-overdue");
 const progressText = document.getElementById("progress-text");
 const progressFill = document.getElementById("progress-fill");
 
+// Kanban Column Containers
+const cardsTodo = document.getElementById("cards-todo");
+const cardsFocus = document.getElementById("cards-focus");
+const cardsDone = document.getElementById("cards-done");
+const countTodo = document.getElementById("count-todo");
+const countFocus = document.getElementById("count-focus");
+const countDone = document.getElementById("count-done");
+
 let allTasksData = [];
+let currentView = "list"; // "list" or "kanban"
 let searchTimeout;
 
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
+  initViewMode();
   loadTasks();
   setupEventListeners();
 });
@@ -58,11 +74,35 @@ function initTheme() {
   });
 }
 
+function initViewMode() {
+  currentView = localStorage.getItem("app-view") || "list";
+  switchView(currentView);
+
+  viewListBtn.addEventListener("click", () => switchView("list"));
+  viewKanbanBtn.addEventListener("click", () => switchView("kanban"));
+}
+
+function switchView(view) {
+  currentView = view;
+  localStorage.setItem("app-view", view);
+
+  if (view === "kanban") {
+    viewKanbanBtn.classList.add("active");
+    viewListBtn.classList.remove("active");
+    taskList.classList.add("hidden");
+    kanbanBoard.classList.remove("hidden");
+  } else {
+    viewListBtn.classList.add("active");
+    viewKanbanBtn.classList.remove("active");
+    kanbanBoard.classList.add("hidden");
+    taskList.classList.remove("hidden");
+  }
+}
+
 function setupEventListeners() {
   taskForm.addEventListener("submit", handleFormSubmit);
   cancelBtn.addEventListener("click", resetForm);
 
-  // Subtask adding in form
   addSubtaskBtn.addEventListener("click", addSubtaskToForm);
   newSubtaskInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
@@ -81,7 +121,8 @@ function setupEventListeners() {
   filterPriority.addEventListener("change", loadTasks);
   sortBySelect.addEventListener("change", loadTasks);
 
-  // Quick filtering via stat cards
+  exportBtn.addEventListener("click", exportTasksToCSV);
+
   document.querySelectorAll(".stat-card").forEach(card => {
     card.addEventListener("click", () => {
       const filter = card.dataset.filter;
@@ -137,6 +178,7 @@ async function loadTasks() {
     allTasksData = tasks;
     updateAnalytics(tasks);
     renderTasks(tasks);
+    renderKanban(tasks);
   } catch (error) {
     showToast("Server connection error", "error");
     taskList.innerHTML = `<div class="empty-state">Unable to load tasks from server.</div>`;
@@ -186,6 +228,7 @@ const categoryIcons = {
   OTHER: "🔖 Other"
 };
 
+// 1. Render Traditional List View
 function renderTasks(tasks) {
   if (tasks.length === 0) {
     taskList.innerHTML = `<div class="empty-state"><p>No tasks found.</p><small>Create one using the form on the left!</small></div>`;
@@ -210,7 +253,6 @@ function renderTasks(tasks) {
       if (!isCompleted && d < now) isOverdue = true;
     }
 
-    // Parse subtasks
     let subtasks = [];
     try {
       if (task.subtasks) subtasks = JSON.parse(task.subtasks);
@@ -265,21 +307,91 @@ function renderTasks(tasks) {
   }).join("");
 }
 
-// Toggle a specific subtask item inside card
+// 2. Render Kanban Board View
+function renderKanban(tasks) {
+  const todoList = tasks.filter(t => t.status === "PENDING" && t.priority !== "HIGH");
+  const focusList = tasks.filter(t => t.status === "PENDING" && t.priority === "HIGH");
+  const doneList = tasks.filter(t => t.status === "COMPLETED");
+
+  countTodo.textContent = todoList.length;
+  countFocus.textContent = focusList.length;
+  countDone.textContent = doneList.length;
+
+  cardsTodo.innerHTML = todoList.map(t => renderKanbanCard(t, "todo")).join("");
+  cardsFocus.innerHTML = focusList.map(t => renderKanbanCard(t, "focus")).join("");
+  cardsDone.innerHTML = doneList.map(t => renderKanbanCard(t, "done")).join("");
+}
+
+function renderKanbanCard(task, colType) {
+  const cat = task.category || "PERSONAL";
+  const catLabel = categoryIcons[cat] || cat;
+  const formattedDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "";
+
+  let actionBtns = "";
+  if (colType === "todo" || colType === "focus") {
+    actionBtns = `<button class="btn btn-primary btn-sm" onclick="toggleTaskStatus(${task.id}, true)" title="Mark Done">✓ Complete</button>`;
+  } else {
+    actionBtns = `<button class="btn btn-secondary btn-sm" onclick="toggleTaskStatus(${task.id}, false)" title="Move to Pending">↺ Reopen</button>`;
+  }
+
+  return `
+    <div class="kanban-card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="badge-cat cat-${cat.toLowerCase()}">${catLabel}</span>
+        <span class="badge badge-${task.priority.toLowerCase()}">${task.priority}</span>
+      </div>
+      <h4 class="kanban-card-title">${escapeHtml(task.title)}</h4>
+      ${task.description ? `<p class="kanban-card-desc">${escapeHtml(task.description)}</p>` : ""}
+      <div class="kanban-card-footer">
+        <span class="due-date" style="font-size:0.75rem;">${formattedDate ? "📅 " + formattedDate : ""}</span>
+        <div style="display:flex; gap:4px;">
+          ${actionBtns}
+          <button class="btn btn-danger btn-sm" onclick="confirmDelete(${task.id})">×</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Export Tasks to CSV
+function exportTasksToCSV() {
+  if (allTasksData.length === 0) {
+    showToast("No tasks available to export", "error");
+    return;
+  }
+
+  const headers = ["ID", "Title", "Description", "Category", "Priority", "Status", "DueDate", "CreatedAt"];
+  const rows = allTasksData.map(t => [
+    t.id,
+    `"${(t.title || "").replace(/"/g, '""')}"`,
+    `"${(t.description || "").replace(/"/g, '""')}"`,
+    t.category,
+    t.priority,
+    t.status,
+    t.dueDate || "",
+    t.createdAt || ""
+  ]);
+
+  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `tasks_backup_${new Date().toISOString().slice(0,10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  showToast("Tasks exported to CSV successfully!", "success");
+}
+
 async function toggleSubtaskDone(taskId, subtaskIdx, isDone) {
   const task = allTasksData.find(t => t.id === taskId);
   if (!task) return;
 
   let subtasks = [];
-  try {
-    subtasks = JSON.parse(task.subtasks || "[]");
-  } catch(e) {}
+  try { subtasks = JSON.parse(task.subtasks || "[]"); } catch(e) {}
 
-  if (subtasks[subtaskIdx]) {
-    subtasks[subtaskIdx].done = isDone;
-  }
-
-  // If all subtasks completed, ask to mark task complete
+  if (subtasks[subtaskIdx]) subtasks[subtaskIdx].done = isDone;
   const allDone = subtasks.length > 0 && subtasks.every(s => s.done);
 
   const payload = {
