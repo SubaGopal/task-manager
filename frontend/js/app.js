@@ -11,6 +11,12 @@ const formTitle = document.getElementById("form-title");
 const saveBtn = document.getElementById("save-btn");
 const cancelBtn = document.getElementById("cancel-btn");
 
+// Subtask Form Elements
+const newSubtaskInput = document.getElementById("new-subtask-input");
+const addSubtaskBtn = document.getElementById("add-subtask-btn");
+const formSubtaskList = document.getElementById("form-subtask-list");
+let currentFormSubtasks = []; // Array of strings in form
+
 const searchInput = document.getElementById("search-input");
 const filterCategory = document.getElementById("filter-category");
 const filterStatus = document.getElementById("filter-status");
@@ -56,6 +62,15 @@ function setupEventListeners() {
   taskForm.addEventListener("submit", handleFormSubmit);
   cancelBtn.addEventListener("click", resetForm);
 
+  // Subtask adding in form
+  addSubtaskBtn.addEventListener("click", addSubtaskToForm);
+  newSubtaskInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addSubtaskToForm();
+    }
+  });
+
   searchInput.addEventListener("input", () => {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(loadTasks, 300);
@@ -66,7 +81,7 @@ function setupEventListeners() {
   filterPriority.addEventListener("change", loadTasks);
   sortBySelect.addEventListener("change", loadTasks);
 
-  // Click on stat cards for quick filtering
+  // Quick filtering via stat cards
   document.querySelectorAll(".stat-card").forEach(card => {
     card.addEventListener("click", () => {
       const filter = card.dataset.filter;
@@ -78,6 +93,28 @@ function setupEventListeners() {
       loadTasks();
     });
   });
+}
+
+function addSubtaskToForm() {
+  const text = newSubtaskInput.value.trim();
+  if (!text) return;
+  currentFormSubtasks.push({ title: text, done: false });
+  newSubtaskInput.value = "";
+  renderFormSubtasks();
+}
+
+function removeSubtaskFromForm(index) {
+  currentFormSubtasks.splice(index, 1);
+  renderFormSubtasks();
+}
+
+function renderFormSubtasks() {
+  formSubtaskList.innerHTML = currentFormSubtasks.map((st, i) => `
+    <li class="form-subtask-item">
+      <span>• ${escapeHtml(st.title)}</span>
+      <button type="button" class="btn-remove-subtask" onclick="removeSubtaskFromForm(${i})">×</button>
+    </li>
+  `).join("");
 }
 
 async function loadTasks() {
@@ -170,10 +207,37 @@ function renderTasks(tasks) {
       const d = new Date(task.dueDate);
       formattedDate = d.toLocaleDateString();
       d.setHours(0,0,0,0);
-      if (!isCompleted && d < now) {
-        isOverdue = true;
-      }
+      if (!isCompleted && d < now) isOverdue = true;
     }
+
+    // Parse subtasks
+    let subtasks = [];
+    try {
+      if (task.subtasks) subtasks = JSON.parse(task.subtasks);
+    } catch(e) {}
+
+    const totalSub = subtasks.length;
+    const doneSub = subtasks.filter(s => s.done).length;
+    const subPercent = totalSub > 0 ? Math.round((doneSub / totalSub) * 100) : 0;
+
+    const subtasksHtml = totalSub > 0 ? `
+      <div class="card-subtasks">
+        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted); margin-bottom:2px;">
+          <span>Checklist (${doneSub}/${totalSub})</span>
+          <span>${subPercent}%</span>
+        </div>
+        <div class="subtasks-progress-bar">
+          <div class="subtasks-progress-fill" style="width:${subPercent}%;"></div>
+        </div>
+        ${subtasks.map((st, idx) => `
+          <div class="subtask-card-row ${st.done ? "done" : ""}">
+            <input type="checkbox" ${st.done ? "checked" : ""} 
+                   onchange="toggleSubtaskDone(${task.id}, ${idx}, this.checked)">
+            <span>${escapeHtml(st.title)}</span>
+          </div>
+        `).join("")}
+      </div>
+    ` : "";
 
     return `
       <div class="task-item ${isCompleted ? "completed" : ""} ${isOverdue ? "is-overdue" : ""}">
@@ -189,6 +253,7 @@ function renderTasks(tasks) {
               <span class="due-date">📅 ${formattedDate}</span>
               ${isOverdue ? `<span class="badge badge-overdue">🚨 OVERDUE</span>` : ""}
             </div>
+            ${subtasksHtml}
           </div>
         </div>
         <div class="task-actions">
@@ -200,6 +265,46 @@ function renderTasks(tasks) {
   }).join("");
 }
 
+// Toggle a specific subtask item inside card
+async function toggleSubtaskDone(taskId, subtaskIdx, isDone) {
+  const task = allTasksData.find(t => t.id === taskId);
+  if (!task) return;
+
+  let subtasks = [];
+  try {
+    subtasks = JSON.parse(task.subtasks || "[]");
+  } catch(e) {}
+
+  if (subtasks[subtaskIdx]) {
+    subtasks[subtaskIdx].done = isDone;
+  }
+
+  // If all subtasks completed, ask to mark task complete
+  const allDone = subtasks.length > 0 && subtasks.every(s => s.done);
+
+  const payload = {
+    title: task.title,
+    description: task.description,
+    category: task.category,
+    priority: task.priority,
+    dueDate: task.dueDate,
+    subtasks: JSON.stringify(subtasks),
+    status: allDone ? "COMPLETED" : task.status
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/${taskId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error("Failed to update subtask");
+    loadTasks();
+  } catch (error) {
+    showToast("Subtask update failed", "error");
+  }
+}
+
 async function handleFormSubmit(e) {
   e.preventDefault();
   const id = taskIdInput.value;
@@ -208,7 +313,8 @@ async function handleFormSubmit(e) {
     description: descInput.value.trim() || null,
     category: categoryInput.value,
     priority: priorityInput.value,
-    dueDate: dueDateInput.value || null
+    dueDate: dueDateInput.value || null,
+    subtasks: currentFormSubtasks.length > 0 ? JSON.stringify(currentFormSubtasks) : null
   };
 
   const isEdit = Boolean(id);
@@ -258,9 +364,18 @@ async function editTask(id) {
     categoryInput.value = task.category || "PERSONAL";
     priorityInput.value = task.priority;
     dueDateInput.value = task.dueDate || "";
+
+    try {
+      currentFormSubtasks = task.subtasks ? JSON.parse(task.subtasks) : [];
+    } catch(e) {
+      currentFormSubtasks = [];
+    }
+    renderFormSubtasks();
+
     formTitle.textContent = "Edit Task";
     saveBtn.textContent = "Update Task";
     cancelBtn.classList.remove("hidden");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   } catch (error) {
     showToast("Failed to load task", "error");
   }
@@ -281,6 +396,8 @@ async function confirmDelete(id) {
 function resetForm() {
   taskIdInput.value = "";
   taskForm.reset();
+  currentFormSubtasks = [];
+  renderFormSubtasks();
   formTitle.textContent = "Create New Task";
   saveBtn.textContent = "Save Task";
   cancelBtn.classList.add("hidden");

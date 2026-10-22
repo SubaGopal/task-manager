@@ -1,20 +1,26 @@
 package com.example.taskmanager.dto;
+
 import com.example.taskmanager.entity.TaskCategory;
 import com.example.taskmanager.entity.TaskPriority;
 import com.example.taskmanager.entity.TaskStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
+
 public class TaskRequestDto {
     @NotBlank(message = "Task title is required")
     @Size(max = 100, message = "Task title must not exceed 100 characters")
     private String title;
+
     @Size(max = 1000, message = "Task description must not exceed 1000 characters")
     private String description;
+
     private TaskStatus status;
     private TaskPriority priority;
     private TaskCategory category;
+    private String subtasks;
     private LocalDate dueDate;
+
     public TaskRequestDto() {}
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
@@ -26,6 +32,8 @@ public class TaskRequestDto {
     public void setPriority(TaskPriority priority) { this.priority = priority; }
     public TaskCategory getCategory() { return category; }
     public void setCategory(TaskCategory category) { this.category = category; }
+    public String getSubtasks() { return subtasks; }
+    public void setSubtasks(String subtasks) { this.subtasks = subtasks; }
     public LocalDate getDueDate() { return dueDate; }
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
 }

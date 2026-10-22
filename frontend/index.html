@@ -19,7 +19,7 @@
       </div>
     </header>
 
-    <!-- Interactive Dashboard Analytics -->
+    <!-- Dashboard Analytics -->
     <section class="dashboard-grid">
       <div class="stat-card" data-filter="ALL" title="Click to view all tasks">
         <div class="stat-icon icon-total">📋</div>
@@ -73,12 +73,12 @@
 
           <div class="form-group">
             <label for="title">Title <span class="required">*</span></label>
-            <input type="text" id="title" name="title" placeholder="e.g. Prepare presentation" required maxlength="100">
+            <input type="text" id="title" name="title" placeholder="e.g. Launch new website" required maxlength="100">
           </div>
 
           <div class="form-group">
             <label for="description">Description</label>
-            <textarea id="description" name="description" rows="3" placeholder="Additional details..." maxlength="1000"></textarea>
+            <textarea id="description" name="description" rows="2" placeholder="Additional details..." maxlength="1000"></textarea>
           </div>
 
           <div class="form-row">
@@ -107,6 +107,16 @@
           <div class="form-group">
             <label for="dueDate">Due Date</label>
             <input type="date" id="dueDate" name="dueDate">
+          </div>
+
+          <!-- Subtasks Builder inside Form -->
+          <div class="form-group subtasks-builder">
+            <label>Subtasks Checklist</label>
+            <div class="subtask-input-row">
+              <input type="text" id="new-subtask-input" placeholder="Add a checklist item...">
+              <button type="button" id="add-subtask-btn" class="btn btn-secondary btn-sm">+ Add</button>
+            </div>
+            <ul id="form-subtask-list" class="form-subtask-list"></ul>
           </div>
 
           <div class="form-actions">
