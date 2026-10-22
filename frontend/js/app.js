@@ -25,8 +25,10 @@ const filterPriority = document.getElementById("filter-priority");
 const sortBySelect = document.getElementById("sort-by");
 const taskList = document.getElementById("task-list");
 const kanbanBoard = document.getElementById("kanban-board");
+const calendarView = document.getElementById("calendar-view");
 const viewListBtn = document.getElementById("view-list-btn");
 const viewKanbanBtn = document.getElementById("view-kanban-btn");
+const viewCalendarBtn = document.getElementById("view-calendar-btn");
 const exportBtn = document.getElementById("export-btn");
 
 const loadingEl = document.getElementById("loading");
@@ -54,6 +56,14 @@ const countTodo = document.getElementById("count-todo");
 const countFocus = document.getElementById("count-focus");
 const countDone = document.getElementById("count-done");
 
+// Calendar Elements
+const calendarMonthYear = document.getElementById("calendar-month-year");
+const calendarGridDays = document.getElementById("calendar-grid-days");
+const calPrevBtn = document.getElementById("cal-prev");
+const calTodayBtn = document.getElementById("cal-today");
+const calNextBtn = document.getElementById("cal-next");
+let currentCalDate = new Date();
+
 let allTasksData = [];
 let currentView = "list";
 let searchTimeout;
@@ -62,16 +72,26 @@ document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   initViewMode();
   initKeyboardShortcuts();
+  initCalendarNav();
   loadTasks();
   setupEventListeners();
 });
+
+// Smart Quick Date Setter
+function setQuickDate(daysOffset) {
+  const d = new Date();
+  d.setDate(d.getDate() + daysOffset);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  dueDateInput.value = `${year}-${month}-${day}`;
+}
 
 // Theme Management
 function initTheme() {
   const savedTheme = localStorage.getItem("app-theme") || "light";
   document.documentElement.setAttribute("data-theme", savedTheme);
   themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
-
   themeToggle.addEventListener("click", toggleTheme);
 }
 
@@ -83,33 +103,112 @@ function toggleTheme() {
   localStorage.setItem("app-theme", nextTheme);
 }
 
-// View Mode
+// 3-Way View Mode (List / Kanban / Calendar)
 function initViewMode() {
   currentView = localStorage.getItem("app-view") || "list";
   switchView(currentView);
 
   viewListBtn.addEventListener("click", () => switchView("list"));
   viewKanbanBtn.addEventListener("click", () => switchView("kanban"));
+  viewCalendarBtn.addEventListener("click", () => switchView("calendar"));
 }
 
 function switchView(view) {
   currentView = view;
   localStorage.setItem("app-view", view);
 
+  viewListBtn.classList.remove("active");
+  viewKanbanBtn.classList.remove("active");
+  viewCalendarBtn.classList.remove("active");
+  taskList.classList.add("hidden");
+  kanbanBoard.classList.add("hidden");
+  calendarView.classList.add("hidden");
+
   if (view === "kanban") {
     viewKanbanBtn.classList.add("active");
-    viewListBtn.classList.remove("active");
-    taskList.classList.add("hidden");
     kanbanBoard.classList.remove("hidden");
+  } else if (view === "calendar") {
+    viewCalendarBtn.classList.add("active");
+    calendarView.classList.remove("hidden");
+    renderCalendar(allTasksData);
   } else {
     viewListBtn.classList.add("active");
-    viewKanbanBtn.classList.remove("active");
-    kanbanBoard.classList.add("hidden");
     taskList.classList.remove("hidden");
   }
 }
 
-// Power User Keyboard Shortcuts
+// Calendar Navigation
+function initCalendarNav() {
+  calPrevBtn.addEventListener("click", () => {
+    currentCalDate.setMonth(currentCalDate.getMonth() - 1);
+    renderCalendar(allTasksData);
+  });
+  calNextBtn.addEventListener("click", () => {
+    currentCalDate.setMonth(currentCalDate.getMonth() + 1);
+    renderCalendar(allTasksData);
+  });
+  calTodayBtn.addEventListener("click", () => {
+    currentCalDate = new Date();
+    renderCalendar(allTasksData);
+  });
+}
+
+function renderCalendar(tasks) {
+  const year = currentCalDate.getFullYear();
+  const month = currentCalDate.getMonth();
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  calendarMonthYear.textContent = `${monthNames[month]} ${year}`;
+
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+  const prevMonthTotalDays = new Date(year, month, 0).getDate();
+
+  calendarGridDays.innerHTML = "";
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  // Previous month trailing days
+  for (let x = firstDayIndex; x > 0; x--) {
+    const dayNum = prevMonthTotalDays - x + 1;
+    calendarGridDays.appendChild(createCalCell(dayNum, true));
+  }
+
+  // Current month days
+  for (let i = 1; i <= totalDaysInMonth; i++) {
+    const dayStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
+    const isToday = dayStr === todayStr;
+
+    const cell = document.createElement("div");
+    cell.className = `cal-day-cell ${isToday ? "today" : ""}`;
+    cell.innerHTML = `<span class="cal-date-number">${i}</span>`;
+
+    const dayTasks = tasks.filter(t => t.dueDate === dayStr);
+    dayTasks.forEach(task => {
+      const pill = document.createElement("div");
+      const isDone = task.status === "COMPLETED";
+      const cat = (task.category || "PERSONAL").toLowerCase();
+      pill.className = `cal-task-pill cat-${cat} ${isDone ? "completed" : ""}`;
+      pill.textContent = (isDone ? "✓ " : "") + task.title;
+      pill.title = `${task.title} (${task.priority})`;
+      pill.onclick = () => editTask(task.id);
+      cell.appendChild(pill);
+    });
+
+    calendarGridDays.appendChild(cell);
+  }
+}
+
+function createCalCell(num, isOtherMonth) {
+  const cell = document.createElement("div");
+  cell.className = `cal-day-cell ${isOtherMonth ? "other-month" : ""}`;
+  cell.innerHTML = `<span class="cal-date-number">${num}</span>`;
+  return cell;
+}
+
+// Keyboard Shortcuts
 function initKeyboardShortcuts() {
   shortcutsBtn.addEventListener("click", () => shortcutsModal.classList.remove("hidden"));
   closeModalBtn.addEventListener("click", () => shortcutsModal.classList.add("hidden"));
@@ -137,7 +236,9 @@ function initKeyboardShortcuts() {
       searchInput.focus();
     } else if (e.key === "v" || e.key === "V") {
       e.preventDefault();
-      switchView(currentView === "list" ? "kanban" : "list");
+      const views = ["list", "kanban", "calendar"];
+      const nextIdx = (views.indexOf(currentView) + 1) % views.length;
+      switchView(views[nextIdx]);
     } else if (e.key === "t" || e.key === "T") {
       e.preventDefault();
       toggleTheme();
@@ -145,7 +246,7 @@ function initKeyboardShortcuts() {
   });
 }
 
-// Canvas Confetti Celebration Explosion
+// Confetti Celebration
 function triggerConfetti() {
   const canvas = document.getElementById("confetti-canvas");
   const ctx = canvas.getContext("2d");
@@ -274,6 +375,7 @@ async function loadTasks() {
     updateAnalytics(tasks);
     renderTasks(tasks);
     renderKanban(tasks);
+    if (currentView === "calendar") renderCalendar(tasks);
   } catch (error) {
     showToast("Server connection error", "error");
     taskList.innerHTML = `<div class="empty-state">Unable to load tasks from server.</div>`;
@@ -545,9 +647,7 @@ async function handleFormSubmit(e) {
 async function toggleTaskStatus(id, isCompleted) {
   const status = isCompleted ? "COMPLETED" : "PENDING";
 
-  if (isCompleted) {
-    triggerConfetti();
-  }
+  if (isCompleted) triggerConfetti();
 
   try {
     const res = await fetch(`${API_BASE}/${id}/status`, {
