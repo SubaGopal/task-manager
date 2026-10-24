@@ -1,778 +1,441 @@
-const API_BASE = "http://localhost:8080/api/tasks";
-
-const taskForm = document.getElementById("task-form");
-const taskIdInput = document.getElementById("task-id");
-const titleInput = document.getElementById("title");
-const descInput = document.getElementById("description");
-const categoryInput = document.getElementById("category");
-const priorityInput = document.getElementById("priority");
-const dueDateInput = document.getElementById("dueDate");
-const formTitle = document.getElementById("form-title");
-const saveBtn = document.getElementById("save-btn");
-const cancelBtn = document.getElementById("cancel-btn");
-
-// Voice Input Buttons
-const voiceTitleBtn = document.getElementById("voice-title-btn");
-const voiceDescBtn = document.getElementById("voice-desc-btn");
-
-// Subtask Form Elements
-const newSubtaskInput = document.getElementById("new-subtask-input");
-const addSubtaskBtn = document.getElementById("add-subtask-btn");
-const formSubtaskList = document.getElementById("form-subtask-list");
-let currentFormSubtasks = [];
-
-// Controls & Views
-const searchInput = document.getElementById("search-input");
-const filterCategory = document.getElementById("filter-category");
-const filterStatus = document.getElementById("filter-status");
-const filterPriority = document.getElementById("filter-priority");
-const sortBySelect = document.getElementById("sort-by");
-const taskList = document.getElementById("task-list");
-const kanbanBoard = document.getElementById("kanban-board");
-const calendarView = document.getElementById("calendar-view");
-const viewListBtn = document.getElementById("view-list-btn");
-const viewKanbanBtn = document.getElementById("view-kanban-btn");
-const viewCalendarBtn = document.getElementById("view-calendar-btn");
-const exportBtn = document.getElementById("export-btn");
-
-const loadingEl = document.getElementById("loading");
-const toastEl = document.getElementById("toast");
-const themeToggle = document.getElementById("theme-toggle");
-
-// Modal Elements
-const shortcutsBtn = document.getElementById("shortcuts-btn");
-const shortcutsModal = document.getElementById("shortcuts-modal");
-const closeModalBtn = document.getElementById("close-modal-btn");
-
-// Stats Elements
-const statTotal = document.getElementById("stat-total");
-const statPending = document.getElementById("stat-pending");
-const statCompleted = document.getElementById("stat-completed");
-const statOverdue = document.getElementById("stat-overdue");
-const progressText = document.getElementById("progress-text");
-const progressFill = document.getElementById("progress-fill");
-
-// Kanban Column Containers
-const cardsTodo = document.getElementById("cards-todo");
-const cardsFocus = document.getElementById("cards-focus");
-const cardsDone = document.getElementById("cards-done");
-const countTodo = document.getElementById("count-todo");
-const countFocus = document.getElementById("count-focus");
-const countDone = document.getElementById("count-done");
-
-// Calendar Elements
-const calendarMonthYear = document.getElementById("calendar-month-year");
-const calendarGridDays = document.getElementById("calendar-grid-days");
-const calPrevBtn = document.getElementById("cal-prev");
-const calTodayBtn = document.getElementById("cal-today");
-const calNextBtn = document.getElementById("cal-next");
+// ==========================================
+// CONSTANTS & STATE
+// ==========================================
+const API = "http://localhost:8080/api";
+let currentTasks = [];
+let formSubtasks = [];
 let currentCalDate = new Date();
+let authMode = "login";
 
-let allTasksData = [];
-let currentView = "list";
-let searchTimeout;
+// ==========================================
+// AUTH FUNCTIONS
+// ==========================================
+function getToken() { return localStorage.getItem("tm_token"); }
+function getUsername() { return localStorage.getItem("tm_username") || "User"; }
 
+function getHeaders() {
+    const h = { "Content-Type": "application/json" };
+    const t = getToken();
+    if (t) h["Authorization"] = "Bearer " + t;
+    return h;
+}
+
+function checkAuth() {
+    if (getToken()) {
+        showApp();
+    } else {
+        showAuthModal();
+    }
+}
+
+function showApp() {
+    document.getElementById("authOverlay").style.display = "none";
+    document.getElementById("appContainer").style.display = "block";
+    document.getElementById("userDisplay").textContent = getUsername();
+    loadTasks();
+}
+
+function showAuthModal() {
+    document.getElementById("authOverlay").style.display = "flex";
+    document.getElementById("appContainer").style.display = "none";
+}
+
+function switchTab(mode) {
+    authMode = mode;
+    const isLogin = mode === "login";
+    document.getElementById("tabLogin").className = "auth-tab" + (isLogin ? " active" : "");
+    document.getElementById("tabRegister").className = "auth-tab" + (!isLogin ? " active" : "");
+    document.getElementById("emailGroup").style.display = isLogin ? "none" : "block";
+    document.getElementById("authTitle").textContent = isLogin ? "Welcome Back" : "Create Account";
+    document.getElementById("authSubtitle").textContent = isLogin ? "Sign in to manage your tasks" : "Register and start organizing!";
+    document.getElementById("authBtn").textContent = isLogin ? "Sign In" : "Register";
+    document.getElementById("authError").style.display = "none";
+}
+
+async function handleAuth(e) {
+    e.preventDefault();
+    const username = document.getElementById("authUsername").value.trim();
+    const password = document.getElementById("authPassword").value.trim();
+    const email = document.getElementById("authEmail").value.trim();
+    const errDiv = document.getElementById("authError");
+    errDiv.style.display = "none";
+
+    const url = API + (authMode === "login" ? "/auth/login" : "/auth/register");
+    const body = authMode === "login"
+        ? { username, password }
+        : { username, password, email };
+
+    try {
+        const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            errDiv.textContent = data.message || "Something went wrong!";
+            errDiv.style.display = "block";
+            return;
+        }
+
+        // SUCCESS
+        localStorage.setItem("tm_token", data.token);
+        localStorage.setItem("tm_username", data.username);
+        document.getElementById("authForm").reset();
+        showApp();
+
+    } catch (err) {
+        errDiv.textContent = "Cannot connect to server! Make sure Spring Boot is running on port 8080.";
+        errDiv.style.display = "block";
+    }
+}
+
+function logout() {
+    if (!confirm("Logout cheyyalamaa?")) return;
+    localStorage.removeItem("tm_token");
+    localStorage.removeItem("tm_username");
+    currentTasks = [];
+    showAuthModal();
+}
+
+// ==========================================
+// INIT
+// ==========================================
 document.addEventListener("DOMContentLoaded", () => {
-  initTheme();
-  initViewMode();
-  initKeyboardShortcuts();
-  initCalendarNav();
-  initVoiceInput();
-  loadTasks();
-  setupEventListeners();
+    initTheme();
+    checkAuth();
+    setupListeners();
+    initVoice();
+    setupKeyboard();
 });
 
-// Voice Dictation (Web Speech Recognition API)
-function initVoiceInput() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  if (!SpeechRecognition) {
-    voiceTitleBtn.style.display = "none";
-    voiceDescBtn.style.display = "none";
-    return;
-  }
-
-  function startDictation(targetInput, triggerBtn) {
-    const recognition = new SpeechRecognition();
-    recognition.lang = "en-IN"; // English/Indian accent or Tamil
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-      triggerBtn.classList.add("listening");
-      showToast("🎙️ Listening... Speak now!", "info");
-    };
-
-    recognition.onresult = (event) => {
-      const speechResult = event.results[0][0].transcript;
-      if (targetInput.value) {
-        targetInput.value += " " + speechResult;
-      } else {
-        targetInput.value = speechResult;
-      }
-      showToast(`Captured: "${speechResult}"`, "success");
-    };
-
-    recognition.onerror = () => {
-      showToast("Voice recognition failed. Check mic permissions.", "error");
-    };
-
-    recognition.onend = () => {
-      triggerBtn.classList.remove("listening");
-    };
-
-    recognition.start();
-  }
-
-  voiceTitleBtn.addEventListener("click", () => startDictation(titleInput, voiceTitleBtn));
-  voiceDescBtn.addEventListener("click", () => startDictation(descInput, voiceDescBtn));
-}
-
-// Smart Quick Date Setter
-function setQuickDate(daysOffset) {
-  const d = new Date();
-  d.setDate(d.getDate() + daysOffset);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  dueDateInput.value = `${year}-${month}-${day}`;
-}
-
-// Theme Management
 function initTheme() {
-  const savedTheme = localStorage.getItem("app-theme") || "light";
-  document.documentElement.setAttribute("data-theme", savedTheme);
-  themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
-  themeToggle.addEventListener("click", toggleTheme);
+    const t = localStorage.getItem("tm_theme") || "light";
+    document.documentElement.setAttribute("data-theme", t);
+    document.getElementById("themeToggle").textContent = t === "dark" ? "☀️" : "🌙";
 }
 
 function toggleTheme() {
-  const current = document.documentElement.getAttribute("data-theme");
-  const nextTheme = current === "dark" ? "light" : "dark";
-  document.documentElement.setAttribute("data-theme", nextTheme);
-  themeToggle.textContent = nextTheme === "dark" ? "☀️" : "🌙";
-  localStorage.setItem("app-theme", nextTheme);
+    const cur = document.documentElement.getAttribute("data-theme") || "light";
+    const next = cur === "light" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("tm_theme", next);
+    document.getElementById("themeToggle").textContent = next === "dark" ? "☀️" : "🌙";
 }
 
-// 3-Way View Mode (List / Kanban / Calendar)
-function initViewMode() {
-  currentView = localStorage.getItem("app-view") || "list";
-  switchView(currentView);
-
-  viewListBtn.addEventListener("click", () => switchView("list"));
-  viewKanbanBtn.addEventListener("click", () => switchView("kanban"));
-  viewCalendarBtn.addEventListener("click", () => switchView("calendar"));
-}
-
-function switchView(view) {
-  currentView = view;
-  localStorage.setItem("app-view", view);
-
-  viewListBtn.classList.remove("active");
-  viewKanbanBtn.classList.remove("active");
-  viewCalendarBtn.classList.remove("active");
-  taskList.classList.add("hidden");
-  kanbanBoard.classList.add("hidden");
-  calendarView.classList.add("hidden");
-
-  if (view === "kanban") {
-    viewKanbanBtn.classList.add("active");
-    kanbanBoard.classList.remove("hidden");
-  } else if (view === "calendar") {
-    viewCalendarBtn.classList.add("active");
-    calendarView.classList.remove("hidden");
-    renderCalendar(allTasksData);
-  } else {
-    viewListBtn.classList.add("active");
-    taskList.classList.remove("hidden");
-  }
-}
-
-// Calendar Navigation
-function initCalendarNav() {
-  calPrevBtn.addEventListener("click", () => {
-    currentCalDate.setMonth(currentCalDate.getMonth() - 1);
-    renderCalendar(allTasksData);
-  });
-  calNextBtn.addEventListener("click", () => {
-    currentCalDate.setMonth(currentCalDate.getMonth() + 1);
-    renderCalendar(allTasksData);
-  });
-  calTodayBtn.addEventListener("click", () => {
-    currentCalDate = new Date();
-    renderCalendar(allTasksData);
-  });
-}
-
-function renderCalendar(tasks) {
-  const year = currentCalDate.getFullYear();
-  const month = currentCalDate.getMonth();
-
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
-  calendarMonthYear.textContent = `${monthNames[month]} ${year}`;
-
-  const firstDayIndex = new Date(year, month, 1).getDay();
-  const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
-  const prevMonthTotalDays = new Date(year, month, 0).getDate();
-
-  calendarGridDays.innerHTML = "";
-  const todayStr = new Date().toISOString().slice(0, 10);
-
-  // Previous month trailing days
-  for (let x = firstDayIndex; x > 0; x--) {
-    const dayNum = prevMonthTotalDays - x + 1;
-    calendarGridDays.appendChild(createCalCell(dayNum, true));
-  }
-
-  // Current month days
-  for (let i = 1; i <= totalDaysInMonth; i++) {
-    const dayStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
-    const isToday = dayStr === todayStr;
-
-    const cell = document.createElement("div");
-    cell.className = `cal-day-cell ${isToday ? "today" : ""}`;
-    cell.innerHTML = `<span class="cal-date-number">${i}</span>`;
-
-    const dayTasks = tasks.filter(t => t.dueDate === dayStr);
-    dayTasks.forEach(task => {
-      const pill = document.createElement("div");
-      const isDone = task.status === "COMPLETED";
-      const cat = (task.category || "PERSONAL").toLowerCase();
-      pill.className = `cal-task-pill cat-${cat} ${isDone ? "completed" : ""}`;
-      pill.textContent = (isDone ? "✓ " : "") + task.title;
-      pill.title = `${task.title} (${task.priority})`;
-      pill.onclick = () => editTask(task.id);
-      cell.appendChild(pill);
-    });
-
-    calendarGridDays.appendChild(cell);
-  }
-}
-
-function createCalCell(num, isOtherMonth) {
-  const cell = document.createElement("div");
-  cell.className = `cal-day-cell ${isOtherMonth ? "other-month" : ""}`;
-  cell.innerHTML = `<span class="cal-date-number">${num}</span>`;
-  return cell;
-}
-
-// Keyboard Shortcuts
-function initKeyboardShortcuts() {
-  shortcutsBtn.addEventListener("click", () => shortcutsModal.classList.remove("hidden"));
-  closeModalBtn.addEventListener("click", () => shortcutsModal.classList.add("hidden"));
-  shortcutsModal.addEventListener("click", (e) => {
-    if (e.target === shortcutsModal) shortcutsModal.classList.add("hidden");
-  });
-
-  document.addEventListener("keydown", (e) => {
-    const isTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName);
-
-    if (e.key === "Escape") {
-      shortcutsModal.classList.add("hidden");
-      resetForm();
-      document.activeElement.blur();
-      return;
-    }
-
-    if (isTyping) return;
-
-    if (e.key === "n" || e.key === "N") {
-      e.preventDefault();
-      titleInput.focus();
-    } else if (e.key === "/" || e.key === "f" || e.key === "F") {
-      e.preventDefault();
-      searchInput.focus();
-    } else if (e.key === "v" || e.key === "V") {
-      e.preventDefault();
-      const views = ["list", "kanban", "calendar"];
-      const nextIdx = (views.indexOf(currentView) + 1) % views.length;
-      switchView(views[nextIdx]);
-    } else if (e.key === "t" || e.key === "T") {
-      e.preventDefault();
-      toggleTheme();
-    }
-  });
-}
-
-// Confetti Celebration
-function triggerConfetti() {
-  const canvas = document.getElementById("confetti-canvas");
-  const ctx = canvas.getContext("2d");
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  const particles = [];
-  const colors = ["#4f46e5", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#3b82f6"];
-
-  for (let i = 0; i < 90; i++) {
-    particles.push({
-      x: canvas.width / 2,
-      y: canvas.height / 2 + 100,
-      r: Math.random() * 6 + 4,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      vx: (Math.random() - 0.5) * 16,
-      vy: (Math.random() - 0.7) * 18,
-      gravity: 0.4,
-      alpha: 1,
-      decay: Math.random() * 0.015 + 0.015
-    });
-  }
-
-  function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    let active = false;
-
-    particles.forEach(p => {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += p.gravity;
-      p.alpha -= p.decay;
-
-      if (p.alpha > 0) {
-        active = true;
-        ctx.save();
-        ctx.globalAlpha = p.alpha;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-    });
-
-    if (active) requestAnimationFrame(render);
-    else ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-
-  render();
-}
-
-function setupEventListeners() {
-  taskForm.addEventListener("submit", handleFormSubmit);
-  cancelBtn.addEventListener("click", resetForm);
-
-  addSubtaskBtn.addEventListener("click", addSubtaskToForm);
-  newSubtaskInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addSubtaskToForm();
-    }
-  });
-
-  searchInput.addEventListener("input", () => {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(loadTasks, 300);
-  });
-
-  filterCategory.addEventListener("change", loadTasks);
-  filterStatus.addEventListener("change", loadTasks);
-  filterPriority.addEventListener("change", loadTasks);
-  sortBySelect.addEventListener("change", loadTasks);
-  exportBtn.addEventListener("click", exportTasksToCSV);
-
-  document.querySelectorAll(".stat-card").forEach(card => {
-    card.addEventListener("click", () => {
-      const filter = card.dataset.filter;
-      if (filter === "ALL") filterStatus.value = "";
-      else if (filter === "PENDING" || filter === "COMPLETED") filterStatus.value = filter;
-      loadTasks();
-    });
-  });
-}
-
-function addSubtaskToForm() {
-  const text = newSubtaskInput.value.trim();
-  if (!text) return;
-  currentFormSubtasks.push({ title: text, done: false });
-  newSubtaskInput.value = "";
-  renderFormSubtasks();
-}
-
-function removeSubtaskFromForm(index) {
-  currentFormSubtasks.splice(index, 1);
-  renderFormSubtasks();
-}
-
-function renderFormSubtasks() {
-  formSubtaskList.innerHTML = currentFormSubtasks.map((st, i) => `
-    <li class="form-subtask-item">
-      <span>• ${escapeHtml(st.title)}</span>
-      <button type="button" class="btn-remove-subtask" onclick="removeSubtaskFromForm(${i})">×</button>
-    </li>
-  `).join("");
-}
-
+// ==========================================
+// TASK API CALLS
+// ==========================================
 async function loadTasks() {
-  loadingEl.classList.remove("hidden");
+    if (!getToken()) return;
+    const cat = document.getElementById("filterCategory").value;
+    const pri = document.getElementById("filterPriority").value;
+    const sta = document.getElementById("filterStatus").value;
+    const src = document.getElementById("searchInput").value.trim();
 
-  const params = new URLSearchParams();
-  if (filterCategory.value) params.append("category", filterCategory.value);
-  if (filterStatus.value) params.append("status", filterStatus.value);
-  if (filterPriority.value) params.append("priority", filterPriority.value);
-  if (searchInput.value.trim()) params.append("search", searchInput.value.trim());
+    let url = `${API}/tasks?sortBy=createdAt&sortDirection=desc`;
+    if (cat) url += `&category=${cat}`;
+    if (pri) url += `&priority=${pri}`;
+    if (sta) url += `&status=${sta}`;
+    if (src) url += `&search=${encodeURIComponent(src)}`;
 
-  const [sortBy, direction] = sortBySelect.value.split("-");
-  params.append("sortBy", sortBy);
-  params.append("direction", direction);
-
-  try {
-    const res = await fetch(`${API_BASE}?${params.toString()}`);
-    if (!res.ok) throw new Error("Failed to load tasks");
-    const tasks = await res.json();
-    allTasksData = tasks;
-    updateAnalytics(tasks);
-    renderTasks(tasks);
-    renderKanban(tasks);
-    if (currentView === "calendar") renderCalendar(tasks);
-  } catch (error) {
-    showToast("Server connection error", "error");
-    taskList.innerHTML = `<div class="empty-state">Unable to load tasks from server.</div>`;
-  } finally {
-    loadingEl.classList.add("hidden");
-  }
-}
-
-function updateAnalytics(tasks) {
-  const now = new Date();
-  now.setHours(0,0,0,0);
-
-  const total = tasks.length;
-  let completed = 0;
-  let pending = 0;
-  let overdue = 0;
-
-  tasks.forEach(t => {
-    if (t.status === "COMPLETED") {
-      completed++;
-    } else {
-      pending++;
-      if (t.dueDate) {
-        const d = new Date(t.dueDate);
-        d.setHours(0,0,0,0);
-        if (d < now) overdue++;
-      }
-    }
-  });
-
-  statTotal.textContent = total;
-  statPending.textContent = pending;
-  statCompleted.textContent = completed;
-  statOverdue.textContent = overdue;
-
-  const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
-  progressText.textContent = `${percent}% Completed`;
-  progressFill.style.width = `${percent}%`;
-}
-
-const categoryIcons = {
-  WORK: "💼 Work",
-  PERSONAL: "🏠 Personal",
-  STUDY: "📚 Study",
-  HEALTH: "🏃 Health",
-  FINANCE: "💰 Finance",
-  OTHER: "🔖 Other"
-};
-
-function renderTasks(tasks) {
-  if (tasks.length === 0) {
-    taskList.innerHTML = `<div class="empty-state"><p>No tasks found.</p><small>Create one using the form on the left!</small></div>`;
-    return;
-  }
-
-  const now = new Date();
-  now.setHours(0,0,0,0);
-
-  taskList.innerHTML = tasks.map(task => {
-    const isCompleted = task.status === "COMPLETED";
-    const cat = task.category || "PERSONAL";
-    const catLabel = categoryIcons[cat] || cat;
-
-    let isOverdue = false;
-    let formattedDate = "No due date";
-
-    if (task.dueDate) {
-      const d = new Date(task.dueDate);
-      formattedDate = d.toLocaleDateString();
-      d.setHours(0,0,0,0);
-      if (!isCompleted && d < now) isOverdue = true;
-    }
-
-    let subtasks = [];
     try {
-      if (task.subtasks) subtasks = JSON.parse(task.subtasks);
-    } catch(e) {}
+        const res = await fetch(url, { headers: getHeaders() });
+        if (res.status === 401) { logout(); return; }
+        currentTasks = await res.json();
+        renderAll();
+        updateStats();
+    } catch (e) {
+        console.error("Load tasks error:", e);
+    }
+}
 
-    const totalSub = subtasks.length;
-    const doneSub = subtasks.filter(s => s.done).length;
-    const subPercent = totalSub > 0 ? Math.round((doneSub / totalSub) * 100) : 0;
+async function saveTask(e) {
+    e.preventDefault();
+    const id = document.getElementById("taskId").value;
+    const payload = {
+        title: document.getElementById("taskTitle").value.trim(),
+        description: document.getElementById("taskDesc").value.trim(),
+        category: document.getElementById("taskCategory").value,
+        priority: document.getElementById("taskPriority").value,
+        dueDate: document.getElementById("taskDueDate").value || null,
+        subtasks: JSON.stringify(formSubtasks)
+    };
 
-    const subtasksHtml = totalSub > 0 ? `
-      <div class="card-subtasks">
-        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted); margin-bottom:2px;">
-          <span>Checklist (${doneSub}/${totalSub})</span>
-          <span>${subPercent}%</span>
+    const method = id ? "PUT" : "POST";
+    const url = id ? `${API}/tasks/${id}` : `${API}/tasks`;
+
+    try {
+        const res = await fetch(url, { method, headers: getHeaders(), body: JSON.stringify(payload) });
+        if (res.ok) { resetForm(); loadTasks(); }
+        else {
+            const d = await res.json();
+            alert("Error: " + (d.message || res.status));
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function toggleStatus(id, currentStatus) {
+    const next = currentStatus === "COMPLETED" ? "PENDING" : "COMPLETED";
+    try {
+        const res = await fetch(`${API}/tasks/${id}/status`, {
+            method: "PATCH",
+            headers: getHeaders(),
+            body: JSON.stringify({ status: next })
+        });
+        if (res.ok) {
+            if (next === "COMPLETED") confetti();
+            loadTasks();
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function deleteTask(id) {
+    if (!confirm("Delete this task?")) return;
+    try {
+        const res = await fetch(`${API}/tasks/${id}`, { method: "DELETE", headers: getHeaders() });
+        if (res.ok) loadTasks();
+    } catch (e) { console.error(e); }
+}
+
+// ==========================================
+// RENDER
+// ==========================================
+function renderAll() {
+    renderGrid();
+    renderKanban();
+    renderCalendar();
+}
+
+function renderGrid() {
+    const el = document.getElementById("taskList");
+    if (!currentTasks.length) {
+        el.innerHTML = '<div class="empty-state">No tasks yet! Create one above 🚀</div>';
+        return;
+    }
+    el.innerHTML = currentTasks.map(taskCard).join("");
+}
+
+function taskCard(t) {
+    const done = t.status === "COMPLETED";
+    const now = new Date().setHours(0,0,0,0);
+    const overdue = t.dueDate && new Date(t.dueDate) < now && !done;
+    let subs = [];
+    try { subs = JSON.parse(t.subtasks || "[]"); } catch(e){}
+    const comp = subs.filter(s => s.completed).length;
+    const pct = subs.length ? Math.round(comp/subs.length*100) : 0;
+
+    return `<div class="task-card ${done ? "completed" : ""} ${overdue ? "overdue-card" : ""}">
+        <div class="card-badges">
+            <span class="badge badge-cat badge-cat-${(t.category||"work").toLowerCase()}">${t.category}</span>
+            <span class="badge badge-pri badge-pri-${(t.priority||"medium").toLowerCase()}">${t.priority}</span>
         </div>
-        <div class="subtasks-progress-bar">
-          <div class="subtasks-progress-fill" style="width:${subPercent}%;"></div>
-        </div>
-        ${subtasks.map((st, idx) => `
-          <div class="subtask-card-row ${st.done ? "done" : ""}">
-            <input type="checkbox" ${st.done ? "checked" : ""} 
-                   onchange="toggleSubtaskDone(${task.id}, ${idx}, this.checked)">
-            <span>${escapeHtml(st.title)}</span>
-          </div>
-        `).join("")}
-      </div>
-    ` : "";
-
-    return `
-      <div class="task-item ${isCompleted ? "completed" : ""} ${isOverdue ? "is-overdue" : ""}">
-        <div class="task-left">
-          <input type="checkbox" class="task-checkbox" ${isCompleted ? "checked" : ""} 
-                 onchange="toggleTaskStatus(${task.id}, this.checked)">
-          <div class="task-details">
-            <h3 class="task-title">${escapeHtml(task.title)}</h3>
-            ${task.description ? `<p class="task-desc">${escapeHtml(task.description)}</p>` : ""}
-            <div class="task-meta">
-              <span class="badge-cat cat-${cat.toLowerCase()}">${catLabel}</span>
-              <span class="badge badge-${task.priority.toLowerCase()}">${task.priority}</span>
-              <span class="due-date">📅 ${formattedDate}</span>
-              ${isOverdue ? `<span class="badge badge-overdue">🚨 OVERDUE</span>` : ""}
+        <h3 class="task-card-title">${esc(t.title)}</h3>
+        <p class="task-card-desc">${esc(t.description || "")}</p>
+        ${subs.length ? `<div class="card-subtasks-preview">
+            <div class="sub-progress-header"><span>${comp}/${subs.length} subtasks</span><span>${pct}%</span></div>
+            <div class="sub-track"><div class="sub-fill" style="width:${pct}%"></div></div>
+        </div>` : ""}
+        <div class="card-footer">
+            <span class="task-card-date">${t.dueDate ? "📅 "+t.dueDate : "No due date"}</span>
+            <div class="card-actions">
+                <button class="btn-action" onclick="toggleStatus(${t.id},'${t.status}')" title="${done ? "Mark Pending" : "Complete"}">${done ? "↩️" : "✅"}</button>
+                <button class="btn-action" onclick="editTask(${t.id})" title="Edit">✏️</button>
+                <button class="btn-action text-danger" onclick="deleteTask(${t.id})" title="Delete">🗑️</button>
             </div>
-            ${subtasksHtml}
-          </div>
         </div>
-        <div class="task-actions">
-          <button class="btn btn-secondary btn-sm" onclick="editTask(${task.id})">Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="confirmDelete(${task.id})">Delete</button>
-        </div>
-      </div>
-    `;
-  }).join("");
+    </div>`;
 }
 
-function renderKanban(tasks) {
-  const todoList = tasks.filter(t => t.status === "PENDING" && t.priority !== "HIGH");
-  const focusList = tasks.filter(t => t.status === "PENDING" && t.priority === "HIGH");
-  const doneList = tasks.filter(t => t.status === "COMPLETED");
-
-  countTodo.textContent = todoList.length;
-  countFocus.textContent = focusList.length;
-  countDone.textContent = doneList.length;
-
-  cardsTodo.innerHTML = todoList.map(t => renderKanbanCard(t, "todo")).join("");
-  cardsFocus.innerHTML = focusList.map(t => renderKanbanCard(t, "focus")).join("");
-  cardsDone.innerHTML = doneList.map(t => renderKanbanCard(t, "done")).join("");
+function renderKanban() {
+    const todos = currentTasks.filter(t => t.status !== "COMPLETED" && t.priority !== "HIGH");
+    const highs = currentTasks.filter(t => t.status !== "COMPLETED" && t.priority === "HIGH");
+    const dones = currentTasks.filter(t => t.status === "COMPLETED");
+    document.getElementById("countTodo").textContent = todos.length;
+    document.getElementById("countHigh").textContent = highs.length;
+    document.getElementById("countDone").textContent = dones.length;
+    document.getElementById("colTodo").innerHTML = todos.map(taskCard).join("");
+    document.getElementById("colHigh").innerHTML = highs.map(taskCard).join("");
+    document.getElementById("colDone").innerHTML = dones.map(taskCard).join("");
 }
 
-function renderKanbanCard(task, colType) {
-  const cat = task.category || "PERSONAL";
-  const catLabel = categoryIcons[cat] || cat;
-  const formattedDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "";
-
-  let actionBtns = "";
-  if (colType === "todo" || colType === "focus") {
-    actionBtns = `<button class="btn btn-primary btn-sm" onclick="toggleTaskStatus(${task.id}, true)" title="Mark Done">✓ Complete</button>`;
-  } else {
-    actionBtns = `<button class="btn btn-secondary btn-sm" onclick="toggleTaskStatus(${task.id}, false)" title="Move to Pending">↺ Reopen</button>`;
-  }
-
-  return `
-    <div class="kanban-card">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="badge-cat cat-${cat.toLowerCase()}">${catLabel}</span>
-        <span class="badge badge-${task.priority.toLowerCase()}">${task.priority}</span>
-      </div>
-      <h4 class="kanban-card-title">${escapeHtml(task.title)}</h4>
-      ${task.description ? `<p class="kanban-card-desc">${escapeHtml(task.description)}</p>` : ""}
-      <div class="kanban-card-footer">
-        <span class="due-date" style="font-size:0.75rem;">${formattedDate ? "📅 " + formattedDate : ""}</span>
-        <div style="display:flex; gap:4px;">
-          ${actionBtns}
-          <button class="btn btn-danger btn-sm" onclick="confirmDelete(${task.id})">×</button>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function exportTasksToCSV() {
-  if (allTasksData.length === 0) {
-    showToast("No tasks available to export", "error");
-    return;
-  }
-
-  const headers = ["ID", "Title", "Description", "Category", "Priority", "Status", "DueDate", "CreatedAt"];
-  const rows = allTasksData.map(t => [
-    t.id,
-    `"${(t.title || "").replace(/"/g, '""')}"`,
-    `"${(t.description || "").replace(/"/g, '""')}"`,
-    t.category,
-    t.priority,
-    t.status,
-    t.dueDate || "",
-    t.createdAt || ""
-  ]);
-
-  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `tasks_backup_${new Date().toISOString().slice(0,10)}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  showToast("Tasks exported to CSV successfully!", "success");
-}
-
-async function toggleSubtaskDone(taskId, subtaskIdx, isDone) {
-  const task = allTasksData.find(t => t.id === taskId);
-  if (!task) return;
-
-  let subtasks = [];
-  try { subtasks = JSON.parse(task.subtasks || "[]"); } catch(e) {}
-
-  if (subtasks[subtaskIdx]) subtasks[subtaskIdx].done = isDone;
-  const allDone = subtasks.length > 0 && subtasks.every(s => s.done);
-
-  if (isDone) triggerConfetti();
-
-  const payload = {
-    title: task.title,
-    description: task.description,
-    category: task.category,
-    priority: task.priority,
-    dueDate: task.dueDate,
-    subtasks: JSON.stringify(subtasks),
-    status: allDone ? "COMPLETED" : task.status
-  };
-
-  try {
-    const res = await fetch(`${API_BASE}/${taskId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error("Failed to update subtask");
-    loadTasks();
-  } catch (error) {
-    showToast("Subtask update failed", "error");
-  }
-}
-
-async function handleFormSubmit(e) {
-  e.preventDefault();
-  const id = taskIdInput.value;
-  const payload = {
-    title: titleInput.value.trim(),
-    description: descInput.value.trim() || null,
-    category: categoryInput.value,
-    priority: priorityInput.value,
-    dueDate: dueDateInput.value || null,
-    subtasks: currentFormSubtasks.length > 0 ? JSON.stringify(currentFormSubtasks) : null
-  };
-
-  const isEdit = Boolean(id);
-  const url = isEdit ? `${API_BASE}/${id}` : API_BASE;
-  const method = isEdit ? "PUT" : "POST";
-
-  try {
-    const res = await fetch(url, {
-      method: method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error("Failed to save task");
-    showToast(isEdit ? "Task updated!" : "Task created!", "success");
-    resetForm();
-    loadTasks();
-  } catch (error) {
-    showToast(error.message, "error");
-  }
-}
-
-async function toggleTaskStatus(id, isCompleted) {
-  const status = isCompleted ? "COMPLETED" : "PENDING";
-
-  if (isCompleted) triggerConfetti();
-
-  try {
-    const res = await fetch(`${API_BASE}/${id}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status })
-    });
-    if (!res.ok) throw new Error("Status update failed");
-    showToast(`Task marked as ${status.toLowerCase()} 🎉`, "success");
-    loadTasks();
-  } catch (error) {
-    showToast("Failed to update status", "error");
-    loadTasks();
-  }
-}
-
-async function editTask(id) {
-  try {
-    const res = await fetch(`${API_BASE}/${id}`);
-    if (!res.ok) throw new Error("Could not fetch task");
-    const task = await res.json();
-    taskIdInput.value = task.id;
-    titleInput.value = task.title;
-    descInput.value = task.description || "";
-    categoryInput.value = task.category || "PERSONAL";
-    priorityInput.value = task.priority;
-    dueDateInput.value = task.dueDate || "";
-
-    try {
-      currentFormSubtasks = task.subtasks ? JSON.parse(task.subtasks) : [];
-    } catch(e) {
-      currentFormSubtasks = [];
+function renderCalendar() {
+    const y = currentCalDate.getFullYear(), m = currentCalDate.getMonth();
+    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    document.getElementById("calMonthYear").textContent = `${months[m]} ${y}`;
+    const first = new Date(y, m, 1).getDay();
+    const days = new Date(y, m+1, 0).getDate();
+    const todayStr = new Date().toISOString().split("T")[0];
+    let html = Array(first).fill('<div class="cal-day cal-empty"></div>').join("");
+    for (let d = 1; d <= days; d++) {
+        const ds = `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+        const dt = currentTasks.filter(t => t.dueDate === ds);
+        html += `<div class="cal-day ${ds===todayStr?"cal-today":""}">
+            <div class="cal-date-number">${d}</div>
+            <div class="cal-day-tasks">${dt.map(t=>`<div class="cal-task-pill pri-${(t.priority||"medium").toLowerCase()}" onclick="editTask(${t.id})">${esc(t.title)}</div>`).join("")}</div>
+        </div>`;
     }
-    renderFormSubtasks();
-
-    formTitle.textContent = "Edit Task";
-    saveBtn.textContent = "Update Task";
-    cancelBtn.classList.remove("hidden");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  } catch (error) {
-    showToast("Failed to load task", "error");
-  }
+    document.getElementById("calendarDaysGrid").innerHTML = html;
 }
 
-async function confirmDelete(id) {
-  if (!confirm("Are you sure you want to delete this task?")) return;
-  try {
-    const res = await fetch(`${API_BASE}/${id}`, { method: "DELETE" });
-    if (!res.ok && res.status !== 204) throw new Error("Delete failed");
-    showToast("Task deleted", "success");
-    loadTasks();
-  } catch (error) {
-    showToast("Failed to delete task", "error");
-  }
+function updateStats() {
+    const total = currentTasks.length;
+    const done = currentTasks.filter(t => t.status === "COMPLETED").length;
+    const now = new Date().setHours(0,0,0,0);
+    const over = currentTasks.filter(t => t.dueDate && new Date(t.dueDate) < now && t.status !== "COMPLETED").length;
+    document.getElementById("statTotal").textContent = total;
+    document.getElementById("statPending").textContent = total - done;
+    document.getElementById("statCompleted").textContent = done;
+    document.getElementById("statOverdue").textContent = over;
+    const pct = total ? Math.round(done/total*100) : 0;
+    document.getElementById("progressBar").style.width = pct + "%";
+    document.getElementById("progressText").textContent = pct + "%";
+}
+
+// ==========================================
+// FORM
+// ==========================================
+function editTask(id) {
+    const t = currentTasks.find(x => x.id === id);
+    if (!t) return;
+    document.getElementById("taskId").value = t.id;
+    document.getElementById("taskTitle").value = t.title;
+    document.getElementById("taskDesc").value = t.description || "";
+    document.getElementById("taskCategory").value = t.category || "WORK";
+    document.getElementById("taskPriority").value = t.priority || "MEDIUM";
+    document.getElementById("taskDueDate").value = t.dueDate || "";
+    try { formSubtasks = JSON.parse(t.subtasks || "[]"); } catch(e) { formSubtasks = []; }
+    renderSubtasks();
+    document.getElementById("formTitle").textContent = "Edit Task";
+    document.getElementById("cancelBtn").style.display = "block";
+    document.getElementById("taskTitle").focus();
+    window.scrollTo(0, 0);
 }
 
 function resetForm() {
-  taskIdInput.value = "";
-  taskForm.reset();
-  currentFormSubtasks = [];
-  renderFormSubtasks();
-  formTitle.textContent = "Create New Task";
-  saveBtn.textContent = "Save Task";
-  cancelBtn.classList.add("hidden");
+    document.getElementById("taskForm").reset();
+    document.getElementById("taskId").value = "";
+    document.getElementById("formTitle").textContent = "Create New Task";
+    document.getElementById("cancelBtn").style.display = "none";
+    formSubtasks = [];
+    renderSubtasks();
 }
 
-function showToast(message, type = "info") {
-  toastEl.textContent = message;
-  toastEl.className = `toast ${type}`;
-  toastEl.classList.remove("hidden");
-  setTimeout(() => toastEl.classList.add("hidden"), 3000);
+function renderSubtasks() {
+    document.getElementById("formSubtaskList").innerHTML = formSubtasks.map((s, i) =>
+        `<li class="form-subtask-item"><span>${esc(s.title)}</span><button type="button" onclick="formSubtasks.splice(${i},1);renderSubtasks()">&times;</button></li>`
+    ).join("");
 }
 
-function escapeHtml(str) {
-  if (!str) return "";
-  return str.replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[m]);
+function setQuickDate(days) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    document.getElementById("taskDueDate").value = d.toISOString().split("T")[0];
+}
+
+// ==========================================
+// LISTENERS & KEYBOARD
+// ==========================================
+function setupListeners() {
+    document.getElementById("taskForm").addEventListener("submit", saveTask);
+    document.getElementById("themeToggle").addEventListener("click", toggleTheme);
+    ["filterCategory","filterPriority","filterStatus"].forEach(id =>
+        document.getElementById(id).addEventListener("change", loadTasks)
+    );
+    document.getElementById("searchInput").addEventListener("input", debounce(loadTasks, 300));
+    document.getElementById("addSubtaskBtn").addEventListener("click", () => {
+        const inp = document.getElementById("newSubtaskInput");
+        if (inp.value.trim()) {
+            formSubtasks.push({ title: inp.value.trim(), completed: false });
+            inp.value = "";
+            renderSubtasks();
+        }
+    });
+    document.querySelectorAll(".view-btn").forEach(btn => btn.addEventListener("click", e => {
+        document.querySelectorAll(".view-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".task-view-container").forEach(c => c.classList.remove("active"));
+        e.target.classList.add("active");
+        document.getElementById(e.target.dataset.view + "View").classList.add("active");
+    }));
+    document.getElementById("calPrevBtn").addEventListener("click", () => { currentCalDate.setMonth(currentCalDate.getMonth()-1); renderCalendar(); });
+    document.getElementById("calNextBtn").addEventListener("click", () => { currentCalDate.setMonth(currentCalDate.getMonth()+1); renderCalendar(); });
+    document.getElementById("calTodayBtn").addEventListener("click", () => { currentCalDate = new Date(); renderCalendar(); });
+}
+
+function setupKeyboard() {
+    document.addEventListener("keydown", e => {
+        if (document.getElementById("authOverlay").style.display !== "none") return;
+        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+        if (e.key === "n" || e.key === "N") document.getElementById("taskTitle").focus();
+        if (e.key === "/" || e.key === "f" || e.key === "F") { e.preventDefault(); document.getElementById("searchInput").focus(); }
+        if (e.key === "t" || e.key === "T") toggleTheme();
+        if (e.key === "Escape") resetForm();
+    });
+}
+
+// ==========================================
+// VOICE
+// ==========================================
+function initVoice() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    document.querySelectorAll(".voice-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const target = document.getElementById(btn.dataset.target);
+            const r = new SR();
+            r.lang = "en-US";
+            btn.classList.add("listening");
+            r.start();
+            r.onresult = e => { target.value = (target.value + " " + e.results[0][0].transcript).trim(); };
+            r.onend = () => btn.classList.remove("listening");
+        });
+    });
+}
+
+// ==========================================
+// CONFETTI
+// ==========================================
+function confetti() {
+    const c = document.getElementById("confettiCanvas");
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    c.width = window.innerWidth; c.height = window.innerHeight;
+    const parts = Array.from({length: 80}, () => ({
+        x: Math.random()*c.width, y: -10,
+        r: Math.random()*6+4,
+        color: ["#6366f1","#10b981","#f59e0b","#ec4899","#3b82f6"][Math.floor(Math.random()*5)],
+        vx: (Math.random()-.5)*4, vy: Math.random()*4+3
+    }));
+    let f = 0;
+    const anim = () => {
+        ctx.clearRect(0,0,c.width,c.height);
+        parts.forEach(p => { p.x+=p.vx; p.y+=p.vy; ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); });
+        if (++f < 120) requestAnimationFrame(anim);
+        else ctx.clearRect(0,0,c.width,c.height);
+    };
+    anim();
+}
+
+// ==========================================
+// UTILS
+// ==========================================
+function exportCsv() {
+    if (!currentTasks.length) return alert("No tasks!");
+    let csv = "ID,Title,Status,Priority,Category,DueDate\n";
+    currentTasks.forEach(t => { csv += `"${t.id}","${(t.title||"").replace(/"/g,'""')}","${t.status}","${t.priority}","${t.category}","${t.dueDate||""}"\n`; });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"}));
+    a.download = "tasks.csv"; a.click();
+}
+
+function esc(s) {
+    if (!s) return "";
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function debounce(fn, ms) {
+    let t;
+    return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
 }
