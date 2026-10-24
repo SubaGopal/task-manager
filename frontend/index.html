@@ -1,279 +1,296 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Task Manager</title>
-  <link rel="stylesheet" href="css/style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager Pro</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Fullscreen Confetti Canvas -->
-  <canvas id="confetti-canvas"></canvas>
+    <canvas id="confettiCanvas"></canvas>
 
-  <div class="app-container">
-    <header class="app-header">
-      <div class="header-content">
-        <h1>Task Manager</h1>
-        <p class="subtitle">Organize, track, and complete your tasks</p>
-      </div>
-      <div class="header-actions">
-        <button id="shortcuts-btn" class="btn btn-secondary btn-sm" title="View Keyboard Shortcuts">⌨️ Keys</button>
-        <button id="export-btn" class="btn btn-secondary btn-sm" title="Export tasks to CSV file">📥 Export CSV</button>
-        <button id="theme-toggle" class="btn-theme" title="Toggle Dark/Light Mode">🌙</button>
-      </div>
-    </header>
-
-    <!-- Dashboard Analytics -->
-    <section class="dashboard-grid">
-      <div class="stat-card" data-filter="ALL" title="Click to view all tasks">
-        <div class="stat-icon icon-total">📋</div>
-        <div class="stat-info">
-          <span class="stat-label">Total Tasks</span>
-          <span class="stat-value" id="stat-total">0</span>
+    <!-- AUTH MODAL (Login / Register) -->
+    <div id="authModal" class="modal-overlay auth-active">
+        <div class="modal auth-card">
+            <div class="auth-header">
+                <span class="auth-logo">🔐</span>
+                <h2 id="authTitle">Welcome Back</h2>
+                <p id="authSubtitle">Sign in to manage your personal tasks securely</p>
+            </div>
+            <div class="auth-tabs">
+                <button type="button" class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Sign In</button>
+                <button type="button" class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">Register</button>
+            </div>
+            <form id="authForm" onsubmit="handleAuthSubmit(event)">
+                <div class="form-group">
+                    <label for="authUsername">Username *</label>
+                    <input type="text" id="authUsername" placeholder="Enter username" required autofocus autocomplete="username">
+                </div>
+                <div class="form-group" id="emailGroup" style="display: none;">
+                    <label for="authEmail">Email Address</label>
+                    <input type="email" id="authEmail" placeholder="yourname@example.com" autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label for="authPassword">Password *</label>
+                    <input type="password" id="authPassword" placeholder="Enter password" required autocomplete="current-password">
+                </div>
+                <div id="authError" class="auth-error-msg" style="display: none;"></div>
+                <button type="submit" class="btn btn-primary btn-block" id="authSubmitBtn">Sign In</button>
+            </form>
         </div>
-      </div>
-      <div class="stat-card" data-filter="PENDING" title="Click to view pending tasks">
-        <div class="stat-icon icon-pending">⏳</div>
-        <div class="stat-info">
-          <span class="stat-label">Pending</span>
-          <span class="stat-value" id="stat-pending">0</span>
-        </div>
-      </div>
-      <div class="stat-card" data-filter="COMPLETED" title="Click to view completed tasks">
-        <div class="stat-icon icon-completed">✅</div>
-        <div class="stat-info">
-          <span class="stat-label">Completed</span>
-          <span class="stat-value" id="stat-completed">0</span>
-        </div>
-      </div>
-      <div class="stat-card" data-filter="OVERDUE" title="Click to view overdue tasks">
-        <div class="stat-icon icon-overdue">🚨</div>
-        <div class="stat-info">
-          <span class="stat-label">Overdue</span>
-          <span class="stat-value" id="stat-overdue">0</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Live Progress Bar -->
-    <section class="progress-section card">
-      <div class="progress-header">
-        <span class="progress-title">Productivity Progress</span>
-        <span class="progress-percent" id="progress-text">0% Completed</span>
-      </div>
-      <div class="progress-track">
-        <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
-      </div>
-    </section>
-
-    <div id="toast" class="toast hidden"></div>
-
-    <main class="main-layout">
-      <!-- Left Column: Form -->
-      <section class="card form-card">
-        <h2 id="form-title">Create New Task <span class="hotkey-hint">(Press 'N')</span></h2>
-        <form id="task-form">
-          <input type="hidden" id="task-id">
-
-          <!-- Title with Voice Mic Button -->
-          <div class="form-group">
-            <label for="title">Title <span class="required">*</span></label>
-            <div class="input-with-voice">
-              <input type="text" id="title" name="title" placeholder="e.g. Launch new website" required maxlength="100">
-              <button type="button" id="voice-title-btn" class="btn-voice" title="Speak to dictate title">🎙️</button>
-            </div>
-          </div>
-
-          <!-- Description with Voice Mic Button -->
-          <div class="form-group">
-            <label for="description">Description</label>
-            <div class="textarea-with-voice">
-              <textarea id="description" name="description" rows="2" placeholder="Additional details..." maxlength="1000"></textarea>
-              <button type="button" id="voice-desc-btn" class="btn-voice btn-voice-desc" title="Speak to dictate description">🎙️</button>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group col">
-              <label for="category">Category</label>
-              <select id="category" name="category">
-                <option value="WORK">💼 Work</option>
-                <option value="PERSONAL" selected>🏠 Personal</option>
-                <option value="STUDY">📚 Study</option>
-                <option value="HEALTH">🏃 Health</option>
-                <option value="FINANCE">💰 Finance</option>
-                <option value="OTHER">🔖 Other</option>
-              </select>
-            </div>
-
-            <div class="form-group col">
-              <label for="priority">Priority</label>
-              <select id="priority" name="priority">
-                <option value="LOW">Low</option>
-                <option value="MEDIUM" selected>Medium</option>
-                <option value="HIGH">High</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Due Date with Smart Quick Presets -->
-          <div class="form-group">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <label for="dueDate" style="margin-bottom:0;">Due Date</label>
-              <div class="quick-dates">
-                <button type="button" class="btn-preset" onclick="setQuickDate(0)">Today</button>
-                <button type="button" class="btn-preset" onclick="setQuickDate(1)">Tomorrow</button>
-                <button type="button" class="btn-preset" onclick="setQuickDate(7)">+1 Week</button>
-              </div>
-            </div>
-            <input type="date" id="dueDate" name="dueDate">
-          </div>
-
-          <!-- Subtasks Builder -->
-          <div class="form-group subtasks-builder">
-            <label>Subtasks Checklist</label>
-            <div class="subtask-input-row">
-              <input type="text" id="new-subtask-input" placeholder="Add a checklist item...">
-              <button type="button" id="add-subtask-btn" class="btn btn-secondary btn-sm">+ Add</button>
-            </div>
-            <ul id="form-subtask-list" class="form-subtask-list"></ul>
-          </div>
-
-          <div class="form-actions">
-            <button type="submit" id="save-btn" class="btn btn-primary">Save Task</button>
-            <button type="button" id="cancel-btn" class="btn btn-secondary hidden">Cancel</button>
-          </div>
-        </form>
-      </section>
-
-      <!-- Right Column: Tasks Section -->
-      <section class="tasks-section">
-        <div class="controls-card">
-          <div class="controls-top-row">
-            <div class="search-bar">
-              <input type="text" id="search-input" placeholder="Search tasks by title... (Press '/')">
-            </div>
-            <div class="view-switcher">
-              <button id="view-list-btn" class="view-btn active" title="List View (Press 'V')">📋 List</button>
-              <button id="view-kanban-btn" class="view-btn" title="Kanban Board View (Press 'V')">📌 Kanban</button>
-              <button id="view-calendar-btn" class="view-btn" title="Calendar View (Press 'C')">📅 Calendar</button>
-            </div>
-          </div>
-          
-          <div class="filter-controls">
-            <div class="filter-group">
-              <label for="filter-category">Category:</label>
-              <select id="filter-category">
-                <option value="">All</option>
-                <option value="WORK">💼 Work</option>
-                <option value="PERSONAL">🏠 Personal</option>
-                <option value="STUDY">📚 Study</option>
-                <option value="HEALTH">🏃 Health</option>
-                <option value="FINANCE">💰 Finance</option>
-                <option value="OTHER">🔖 Other</option>
-              </select>
-            </div>
-
-            <div class="filter-group">
-              <label for="filter-status">Status:</label>
-              <select id="filter-status">
-                <option value="">All</option>
-                <option value="PENDING">Pending</option>
-                <option value="COMPLETED">Completed</option>
-              </select>
-            </div>
-
-            <div class="filter-group">
-              <label for="filter-priority">Priority:</label>
-              <select id="filter-priority">
-                <option value="">All</option>
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
-              </select>
-            </div>
-
-            <div class="filter-group">
-              <label for="sort-by">Sort By:</label>
-              <select id="sort-by">
-                <option value="createdAt-desc">Newest First</option>
-                <option value="createdAt-asc">Oldest First</option>
-                <option value="dueDate-asc">Due Date (Soonest)</option>
-                <option value="priority-desc">Priority</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div id="loading" class="loading-state hidden">Loading tasks...</div>
-
-        <!-- 1. Traditional List View -->
-        <div id="task-list" class="task-list"></div>
-
-        <!-- 2. Modern Kanban Board View -->
-        <div id="kanban-board" class="kanban-board hidden">
-          <div class="kanban-col" id="col-todo">
-            <div class="kanban-col-header">
-              <span class="kanban-title">⏳ To Do</span>
-              <span class="kanban-count" id="count-todo">0</span>
-            </div>
-            <div class="kanban-cards" id="cards-todo"></div>
-          </div>
-
-          <div class="kanban-col" id="col-focus">
-            <div class="kanban-col-header focus-header">
-              <span class="kanban-title">🔥 High Priority Focus</span>
-              <span class="kanban-count" id="count-focus">0</span>
-            </div>
-            <div class="kanban-cards" id="cards-focus"></div>
-          </div>
-
-          <div class="kanban-col" id="col-done">
-            <div class="kanban-col-header done-header">
-              <span class="kanban-title">✅ Completed</span>
-              <span class="kanban-count" id="count-done">0</span>
-            </div>
-            <div class="kanban-cards" id="cards-done"></div>
-          </div>
-        </div>
-
-        <!-- 3. Monthly Calendar View -->
-        <div id="calendar-view" class="calendar-view card hidden">
-          <div class="calendar-header">
-            <h3 id="calendar-month-year">Month Year</h3>
-            <div class="calendar-nav">
-              <button id="cal-prev" class="btn btn-secondary btn-sm">◀ Prev</button>
-              <button id="cal-today" class="btn btn-secondary btn-sm">Today</button>
-              <button id="cal-next" class="btn btn-secondary btn-sm">Next ▶</button>
-            </div>
-          </div>
-          <div class="calendar-grid-weekdays">
-            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-          </div>
-          <div id="calendar-grid-days" class="calendar-grid-days"></div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <!-- Keyboard Shortcuts Modal -->
-  <div id="shortcuts-modal" class="modal-overlay hidden">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>⌨️ Keyboard Shortcuts</h3>
-        <button id="close-modal-btn" class="btn-close-modal">×</button>
-      </div>
-      <div class="shortcuts-list">
-        <div class="shortcut-row"><kbd>N</kbd> <span>Focus & Create New Task</span></div>
-        <div class="shortcut-row"><kbd>/</kbd> or <kbd>F</kbd> <span>Search Tasks</span></div>
-        <div class="shortcut-row"><kbd>V</kbd> <span>Toggle List / Kanban / Calendar</span></div>
-        <div class="shortcut-row"><kbd>T</kbd> <span>Toggle Dark / Light Theme</span></div>
-        <div class="shortcut-row"><kbd>Esc</kbd> <span>Cancel Edit / Close Modal</span></div>
-      </div>
     </div>
-  </div>
 
-  <script src="js/app.js"></script>
+    <div class="container" id="appMainContainer">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="header-left">
+                <h1>Task Manager <span>Pro</span></h1>
+                <p class="subtitle">Organize, Track, and Achieve your Goals with Peace of Mind</p>
+            </div>
+            <div class="header-right">
+                <div class="user-badge" id="userBadge">
+                    <span class="user-avatar" id="userAvatar">👤</span>
+                    <span class="user-name" id="userNameDisplay">Suba</span>
+                    <button class="btn-logout" onclick="logout()" title="Logout">🚪 Logout</button>
+                </div>
+                <button id="themeToggle" class="theme-toggle" title="Toggle Dark/Light Mode">🌙</button>
+                <button id="shortcutsBtn" class="btn btn-secondary btn-sm" title="Keyboard Shortcuts (Press ?)">⌨️ Shortcuts</button>
+                <button id="exportCsvBtn" class="btn btn-secondary btn-sm" title="Export Backup">📥 Export CSV</button>
+            </div>
+        </header>
+
+        <!-- DASHBOARD STATS -->
+        <section class="dashboard-stats">
+            <div class="stat-card">
+                <div class="stat-icon stat-total">📋</div>
+                <div class="stat-content">
+                    <div class="stat-number" id="statTotal">0</div>
+                    <div class="stat-label">Total Tasks</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon stat-pending">⏳</div>
+                <div class="stat-content">
+                    <div class="stat-number" id="statPending">0</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon stat-completed">✅</div>
+                <div class="stat-content">
+                    <div class="stat-number" id="statCompleted">0</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon stat-overdue">⚠️</div>
+                <div class="stat-content">
+                    <div class="stat-number" id="statOverdue">0</div>
+                    <div class="stat-label">Overdue</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PROGRESS BAR -->
+        <div class="progress-section">
+            <div class="progress-info">
+                <span>Task Completion Progress</span>
+                <span id="progressText">0%</span>
+            </div>
+            <div class="progress-track">
+                <div id="progressBar" class="progress-fill" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <!-- MAIN LAYOUT -->
+        <div class="main-layout">
+            <!-- TASK FORM PANEL -->
+            <aside class="form-panel card">
+                <div class="panel-header">
+                    <h2 id="formTitle">Create New Task</h2>
+                    <span class="badge badge-info">Shortcut: N</span>
+                </div>
+                <form id="taskForm">
+                    <input type="hidden" id="taskId">
+                    
+                    <div class="form-group">
+                        <label for="taskTitle">Task Title *</label>
+                        <div class="input-with-voice">
+                            <input type="text" id="taskTitle" placeholder="e.g. Build Spring Security Auth" required maxlength="150">
+                            <button type="button" class="voice-btn" data-target="taskTitle" title="Voice Dictation">🎙️</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="taskDesc">Description</label>
+                        <div class="input-with-voice">
+                            <textarea id="taskDesc" rows="3" placeholder="Provide extra details..."></textarea>
+                            <button type="button" class="voice-btn" data-target="taskDesc" title="Voice Dictation">🎙️</button>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-half">
+                            <label for="taskCategory">Category</label>
+                            <select id="taskCategory">
+                                <option value="WORK">💼 Work</option>
+                                <option value="PERSONAL">🏠 Personal</option>
+                                <option value="STUDY">📚 Study</option>
+                                <option value="HEALTH">🏃 Health</option>
+                                <option value="FINANCE">💰 Finance</option>
+                                <option value="OTHER">✨ Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group col-half">
+                            <label for="taskPriority">Priority</label>
+                            <select id="taskPriority">
+                                <option value="LOW">🟢 Low</option>
+                                <option value="MEDIUM" selected>🟡 Medium</option>
+                                <option value="HIGH">🔴 High</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="taskDueDate">Due Date</label>
+                        <div class="quick-dates">
+                            <button type="button" class="chip-date" onclick="setQuickDate(0)">Today</button>
+                            <button type="button" class="chip-date" onclick="setQuickDate(1)">Tomorrow</button>
+                            <button type="button" class="chip-date" onclick="setQuickDate(7)">+1 Week</button>
+                        </div>
+                        <input type="date" id="taskDueDate">
+                    </div>
+
+                    <!-- SUBTASKS BUILDER -->
+                    <div class="form-group">
+                        <label>Subtasks Checklist</label>
+                        <div class="subtask-input-row">
+                            <input type="text" id="newSubtaskInput" placeholder="Add a step...">
+                            <button type="button" id="addSubtaskBtn" class="btn btn-secondary btn-sm">+ Add</button>
+                        </div>
+                        <ul id="formSubtaskList" class="form-subtask-list"></ul>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" id="saveBtn" class="btn btn-primary btn-block">Save Task</button>
+                        <button type="button" id="cancelBtn" class="btn btn-secondary btn-block" style="display: none;">Cancel</button>
+                    </div>
+                </form>
+            </aside>
+
+            <!-- TASKS CONTENT PANEL -->
+            <main class="content-panel">
+                <!-- TOP CONTROLS -->
+                <div class="controls-bar card">
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="searchInput" placeholder="Search tasks... (Shortcut: / or F)">
+                    </div>
+
+                    <div class="filters-group">
+                        <select id="filterCategory" title="Filter by Category">
+                            <option value="">All Categories</option>
+                            <option value="WORK">💼 Work</option>
+                            <option value="PERSONAL">🏠 Personal</option>
+                            <option value="STUDY">📚 Study</option>
+                            <option value="HEALTH">🏃 Health</option>
+                            <option value="FINANCE">💰 Finance</option>
+                            <option value="OTHER">✨ Other</option>
+                        </select>
+
+                        <select id="filterPriority" title="Filter by Priority">
+                            <option value="">All Priorities</option>
+                            <option value="HIGH">🔴 High</option>
+                            <option value="MEDIUM">🟡 Medium</option>
+                            <option value="LOW">🟢 Low</option>
+                        </select>
+
+                        <select id="filterStatus" title="Filter by Status">
+                            <option value="">All Statuses</option>
+                            <option value="PENDING">⏳ In Progress</option>
+                            <option value="COMPLETED">✅ Completed</option>
+                        </select>
+
+                        <!-- VIEW SWITCHER -->
+                        <div class="view-switcher">
+                            <button class="view-btn active" data-view="grid" title="Card Grid View">🔲 Grid</button>
+                            <button class="view-btn" data-view="kanban" title="Kanban Board View">📊 Kanban</button>
+                            <button class="view-btn" data-view="calendar" title="Calendar View">📅 Calendar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW 1: GRID VIEW -->
+                <section id="gridView" class="task-view-container active">
+                    <div id="taskList" class="task-grid"></div>
+                </section>
+
+                <!-- VIEW 2: KANBAN BOARD -->
+                <section id="kanbanView" class="task-view-container">
+                    <div class="kanban-board">
+                        <div class="kanban-col">
+                            <div class="kanban-col-header">
+                                <span>⏳ To Do (<span id="countTodo">0</span>)</span>
+                            </div>
+                            <div class="kanban-col-body" id="colTodo"></div>
+                        </div>
+                        <div class="kanban-col">
+                            <div class="kanban-col-header high-focus">
+                                <span>🔥 High Priority Focus (<span id="countHigh">0</span>)</span>
+                            </div>
+                            <div class="kanban-col-body" id="colHigh"></div>
+                        </div>
+                        <div class="kanban-col">
+                            <div class="kanban-col-header done-focus">
+                                <span>✅ Completed (<span id="countDone">0</span>)</span>
+                            </div>
+                            <div class="kanban-col-body" id="colDone"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW 3: CALENDAR VIEW -->
+                <section id="calendarView" class="task-view-container">
+                    <div class="calendar-card card">
+                        <div class="calendar-header">
+                            <button id="calPrevBtn" class="btn btn-secondary btn-sm">◀ Prev</button>
+                            <h3 id="calMonthYear">October 2026</h3>
+                            <div>
+                                <button id="calTodayBtn" class="btn btn-secondary btn-sm">Today</button>
+                                <button id="calNextBtn" class="btn btn-secondary btn-sm">Next ▶</button>
+                            </div>
+                        </div>
+                        <div class="calendar-grid-header">
+                            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                        </div>
+                        <div class="calendar-days-grid" id="calendarDaysGrid"></div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- SHORTCUTS MODAL -->
+    <div id="shortcutsModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>⚡ Power-User Keyboard Shortcuts</h3>
+                <button class="btn-close" onclick="closeShortcutsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <table class="shortcuts-table">
+                    <tr><td><kbd>N</kbd></td><td>Focus on Create New Task input</td></tr>
+                    <tr><td><kbd>/</kbd> or <kbd>F</kbd></td><td>Focus search bar</td></tr>
+                    <tr><td><kbd>V</kbd></td><td>Toggle Views (Grid ➔ Kanban ➔ Calendar)</td></tr>
+                    <tr><td><kbd>T</kbd></td><td>Toggle Dark / Light Theme</td></tr>
+                    <tr><td><kbd>Esc</kbd></td><td>Close modal or cancel task editing</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
 </body>
 </html>

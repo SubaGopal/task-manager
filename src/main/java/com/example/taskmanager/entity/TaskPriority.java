@@ -1,7 +1,2 @@
 package com.example.taskmanager.entity;
-
-public enum TaskPriority {
-    LOW,
-    MEDIUM,
-    HIGH
-}
+public enum TaskPriority { LOW, MEDIUM, HIGH }
