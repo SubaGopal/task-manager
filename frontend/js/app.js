@@ -516,7 +516,7 @@ function setupEventListeners() {
 
     document.getElementById("exportCsvBtn").addEventListener("click", exportCsv);
     document.getElementById("shortcutsBtn").addEventListener("click", () => {
-        document.getElementById("shortcutsModal").classList.add("active");
+        openShortcutsModal();
     });
 }
 
@@ -534,8 +534,20 @@ function exportCsv() {
     a.click();
 }
 
+function openShortcutsModal() {
+    const modal = document.getElementById("shortcutsModal");
+    if (modal) {
+        modal.classList.add("active");
+        modal.style.display = "flex";
+    }
+}
+
 function closeShortcutsModal() {
-    document.getElementById("shortcutsModal").classList.remove("active");
+    const modal = document.getElementById("shortcutsModal");
+    if (modal) {
+        modal.classList.remove("active");
+        modal.style.display = "none";
+    }
 }
 
 function setupKeyboardShortcuts() {
