@@ -639,3 +639,72 @@ function debounce(fn, ms) {
         timer = setTimeout(() => fn.apply(this, args), ms);
     };
 }
+
+// ==========================================
+// AI SMART SUBTASK BREAKDOWN
+// ==========================================
+async function triggerAiBreakdown() {
+    const titleInput = document.getElementById("taskTitle");
+    const title = titleInput.value.trim();
+    if (!title) {
+        alert("Please enter a Task Title first (e.g. 'Learn Spring Security' or 'Plan Weekend Trip')!");
+        titleInput.focus();
+        return;
+    }
+
+    const aiBtn = document.getElementById("aiBreakdownBtn");
+    const origText = aiBtn.innerHTML;
+    aiBtn.innerHTML = "✨ AI Thinking...";
+    aiBtn.classList.add("thinking");
+
+    try {
+        const desc = document.getElementById("taskDesc").value.trim();
+        const res = await fetch(`${API_BASE}/ai/breakdown`, {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ title, description: desc })
+        });
+
+        if (!res.ok) throw new Error("AI request failed");
+
+        const data = await res.json();
+
+        // 1. Auto-fill Subtasks
+        if (data.subtasks && data.subtasks.length > 0) {
+            formSubtasks = data.subtasks.map(step => ({ title: step, completed: false }));
+            renderFormSubtasks();
+        }
+
+        // 2. Auto-select Suggested Category
+        if (data.suggestedCategory) {
+            const catSelect = document.getElementById("taskCategory");
+            for (let opt of catSelect.options) {
+                if (opt.value === data.suggestedCategory) {
+                    catSelect.value = data.suggestedCategory;
+                    break;
+                }
+            }
+        }
+
+        // 3. Auto-select Suggested Priority
+        if (data.suggestedPriority) {
+            const priSelect = document.getElementById("taskPriority");
+            for (let opt of priSelect.options) {
+                if (opt.value === data.suggestedPriority) {
+                    priSelect.value = data.suggestedPriority;
+                    break;
+                }
+            }
+        }
+
+        // Celebration micro-confetti
+        triggerConfetti();
+
+    } catch (err) {
+        console.error("AI Breakdown Error:", err);
+        alert("Could not reach AI service. Please ensure backend is running!");
+    } finally {
+        aiBtn.innerHTML = origText;
+        aiBtn.classList.remove("thinking");
+    }
+}

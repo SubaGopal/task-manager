@@ -1027,3 +1027,52 @@ kbd {
     color: var(--text-muted);
     font-size: 0.85rem;
 }
+/* ==========================================================
+   AI MAGIC BUTTON & GLOW STYLES
+   ========================================================== */
+.label-with-ai {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.btn-ai-magic {
+    background: linear-gradient(135deg, #ec4899, #8b5cf6, #3b82f6);
+    background-size: 200% 200%;
+    animation: gradientShift 3s ease infinite;
+    color: #ffffff;
+    border: none;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 0 15px rgba(236, 72, 153, 0.4);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+}
+
+.btn-ai-magic:hover {
+    transform: scale(1.06);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+}
+
+.btn-ai-magic.thinking {
+    opacity: 0.8;
+    pointer-events: none;
+    animation: pulseGlow 1s infinite alternate;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes pulseGlow {
+    from { transform: scale(1); filter: brightness(1); }
+    to { transform: scale(1.05); filter: brightness(1.3); }
+}

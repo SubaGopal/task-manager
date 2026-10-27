@@ -116,7 +116,10 @@
                     <input type="hidden" id="taskId">
                     
                     <div class="form-group">
-                        <label for="taskTitle">Task Title *</label>
+                        <div class="label-with-ai">
+    <label for="taskTitle" style="margin-bottom: 0;">Task Title *</label>
+    <button type="button" id="aiBreakdownBtn" class="btn-ai-magic" onclick="triggerAiBreakdown()" title="Generate Subtasks with AI">✨ AI Breakdown</button>
+</div>
                         <div class="input-with-voice">
                             <input type="text" id="taskTitle" placeholder="e.g. Finish Spring Boot Security" required maxlength="150">
                             <button type="button" class="voice-btn" data-target="taskTitle" title="Voice Dictation">🎙️</button>

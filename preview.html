@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultra Colorful Designs Preview</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Cabinet+Grotesk:wght@800;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        body { min-height: 100vh; padding-bottom: 60px; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        /* TOP THEME CHANGER */
+        .color-nav {
+            position: sticky; top: 0; z-index: 99999;
+            background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(14px);
+            padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-bottom: 3px solid;
+            border-image: linear-gradient(90deg, #ff007a, #7928ca, #00f2fe, #4facfe, #00f260) 1;
+        }
+        .color-nav h2 { color: #fff; font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+        .color-tabs { display: flex; gap: 10px; }
+        .tab-btn {
+            padding: 10px 20px; border-radius: 30px; font-weight: 800; font-size: 0.92rem;
+            cursor: pointer; border: none; color: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .tab-btn:hover { transform: translateY(-2px) scale(1.05); }
+
+        .container { max-width: 1320px; margin: 30px auto; padding: 0 24px; }
+
+        /* =======================================================
+           THEME 1: CANDY POP & SUNSET MESH (JUICY & VIBRANT)
+           ======================================================= */
+        body.theme-candy {
+            background: #0f172a;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(255, 65, 108, 0.35) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(0, 242, 254, 0.3) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(255, 179, 71, 0.25) 0px, transparent 50%);
+            color: #ffffff;
+        }
+        body.theme-candy .c-card {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            border-radius: 24px; padding: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        body.theme-candy .stat-1 { background: linear-gradient(135deg, #ff416c, #ff4b2b); box-shadow: 0 10px 25px rgba(255, 65, 108, 0.4); }
+        body.theme-candy .stat-2 { background: linear-gradient(135deg, #f7971e, #ffd200); box-shadow: 0 10px 25px rgba(247, 151, 30, 0.4); }
+        body.theme-candy .stat-3 { background: linear-gradient(135deg, #11998e, #38ef7d); box-shadow: 0 10px 25px rgba(56, 239, 125, 0.4); }
+        body.theme-candy .stat-4 { background: linear-gradient(135deg, #cb2d3e, #ef473a); box-shadow: 0 10px 25px rgba(239, 71, 58, 0.4); }
+        body.theme-candy .btn-action-main {
+            background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%);
+            box-shadow: 0 10px 25px rgba(255, 8, 68, 0.5);
+        }
+
+        /* =======================================================
+           THEME 2: PRISM RAINBOW HOLOGRAPHIC (IRIDESCENT & COOL)
+           ======================================================= */
+        body.theme-prism {
+            background: #09090b;
+            background-image: 
+                radial-gradient(at 10% 20%, rgba(147, 51, 234, 0.4) 0px, transparent 40%),
+                radial-gradient(at 90% 80%, rgba(59, 130, 246, 0.4) 0px, transparent 40%),
+                radial-gradient(at 50% 50%, rgba(236, 72, 153, 0.25) 0px, transparent 50%);
+            color: #ffffff;
+        }
+        body.theme-prism .c-card {
+            background: rgba(18, 18, 24, 0.85);
+            backdrop-filter: blur(25px);
+            border-radius: 24px; padding: 24px;
+            position: relative;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+        body.theme-prism .c-card::after {
+            content: ''; position: absolute; inset: -2px; border-radius: 26px;
+            background: linear-gradient(135deg, #ff007a, #7928ca, #00dfd8, #43e97b);
+            z-index: -1; opacity: 0.7;
+        }
+        body.theme-prism .stat-1 { background: linear-gradient(135deg, #8a2387, #e94057); }
+        body.theme-prism .stat-2 { background: linear-gradient(135deg, #f27121, #e94057); }
+        body.theme-prism .stat-3 { background: linear-gradient(135deg, #00b09b, #96c93d); }
+        body.theme-prism .stat-4 { background: linear-gradient(135deg, #f857a6, #ff5858); }
+        body.theme-prism .btn-action-main {
+            background: linear-gradient(135deg, #7928ca, #ff0080);
+            box-shadow: 0 10px 30px rgba(255, 0, 128, 0.5);
+        }
+
+        /* =======================================================
+           THEME 3: CYBER SYNTHWAVE (HOT MAGENTA & NEON TEAL)
+           ======================================================= */
+        body.theme-synth {
+            background: #0f051d;
+            background-image: 
+                linear-gradient(rgba(255, 0, 127, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 246, 255, 0.08) 1px, transparent 1px);
+            background-size: 30px 30px;
+            color: #f1f5f9;
+        }
+        body.theme-synth .c-card {
+            background: #180933;
+            border: 2px solid #ff007f;
+            border-radius: 20px; padding: 24px;
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.25), inset 0 0 15px rgba(255, 0, 127, 0.08);
+        }
+        body.theme-synth .c-card:hover {
+            border-color: #00f6ff; box-shadow: 0 0 35px rgba(0, 246, 255, 0.4); transform: translateY(-4px);
+        }
+        body.theme-synth .stat-1 { background: linear-gradient(135deg, #ff007f, #7928ca); box-shadow: 0 0 20px rgba(255,0,127,0.5); }
+        body.theme-synth .stat-2 { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 0 20px rgba(245,158,11,0.5); }
+        body.theme-synth .stat-3 { background: linear-gradient(135deg, #00f6ff, #00bbff); color: #000; box-shadow: 0 0 20px rgba(0,246,255,0.5); }
+        body.theme-synth .stat-4 { background: linear-gradient(135deg, #ef4444, #b91c1c); box-shadow: 0 0 20px rgba(239,68,68,0.5); }
+        body.theme-synth .btn-action-main {
+            background: linear-gradient(90deg, #ff007f, #00f6ff);
+            color: #000; font-weight: 900;
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.6);
+        }
+
+        /* LAYOUT & STATS */
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
+        .stat-card-pop {
+            border-radius: 22px; padding: 24px; color: #ffffff;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .stat-card-pop .num { font-size: 2.8rem; font-weight: 900; line-height: 1; }
+        .stat-card-pop .lbl { font-size: 0.95rem; font-weight: 700; opacity: 0.9; margin-top: 6px; }
+
+        .main-layout { display: grid; grid-template-columns: 380px 1fr; gap: 28px; }
+        .input-stylish {
+            width: 100%; padding: 14px 16px; border-radius: 14px;
+            background: rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.15);
+            color: #fff; font-size: 1rem; margin-bottom: 16px;
+        }
+        .input-stylish:focus { outline: none; border-color: #ff007a; }
+
+        .btn-action-main {
+            width: 100%; padding: 16px; border: none; border-radius: 16px;
+            font-size: 1.05rem; font-weight: 800; cursor: pointer; color: #fff;
+            letter-spacing: 0.5px; text-transform: uppercase;
+        }
+
+        .task-grid-pop { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 22px; }
+        .card-task { position: relative; overflow: hidden; }
+        .card-task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        
+        .pill-tag {
+            padding: 6px 14px; border-radius: 30px; font-size: 0.8rem; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .pill-work { background: #3b82f6; color: #fff; box-shadow: 0 4px 12px rgba(59,130,246,0.5); }
+        .pill-study { background: #10b981; color: #fff; box-shadow: 0 4px 12px rgba(16,185,129,0.5); }
+        .pill-health { background: #ec4899; color: #fff; box-shadow: 0 4px 12px rgba(236,72,153,0.5); }
+        .pill-finance { background: #f59e0b; color: #fff; box-shadow: 0 4px 12px rgba(245,158,11,0.5); }
+
+        .task-h { font-size: 1.3rem; font-weight: 800; margin-bottom: 8px; line-height: 1.3; }
+        .task-p { font-size: 0.95rem; opacity: 0.85; line-height: 1.5; margin-bottom: 18px; }
+
+        .checklist-row {
+            background: rgba(0,0,0,0.25); border-radius: 12px; padding: 12px; margin-bottom: 16px;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .ch-item { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; font-weight: 600; }
+        .ch-dot { width: 18px; height: 18px; border-radius: 6px; border: 2px solid #ff416c; background: rgba(255,65,108,0.2); }
+        .ch-dot.done { background: #10b981; border-color: #10b981; }
+
+        .card-foot {
+            display: flex; justify-content: space-between; align-items: center;
+            border-top: 1px solid rgba(255,255,255,0.12); padding-top: 14px; font-weight: 700; font-size: 0.88rem;
+        }
+    </style>
+</head>
+<body class="theme-candy">
+
+    <!-- COLORFUL NAV SWITCHER -->
+    <div class="color-nav">
+        <h2>🎨 Pick Your Vibrant Color Style ➔</h2>
+        <div class="color-tabs">
+            <button class="tab-btn" style="background: linear-gradient(135deg, #ff416c, #ff4b2b);" onclick="pick('theme-candy')">1. 🍭 Candy Pop & Sunset</button>
+            <button class="tab-btn" style="background: linear-gradient(135deg, #7928ca, #00dfd8);" onclick="pick('theme-prism')">2. 🌈 Prism Rainbow Glass</button>
+            <button class="tab-btn" style="background: linear-gradient(135deg, #ff007f, #00f6ff); color: #000;" onclick="pick('theme-synth')">3. ⚡ Cyber Synthwave</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- HEADER -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <div>
+                <h1 style="font-size: 2.4rem; font-weight: 900; letter-spacing: -0.5px;">TASK MANAGER <span style="color: #ff416c;">PRO</span></h1>
+                <p style="opacity: 0.85; font-size: 1rem; margin-top: 4px;">Supercharge your workflow with joyful colors 🚀</p>
+            </div>
+            <div style="display: flex; gap: 14px; align-items: center;">
+                <div class="c-card" style="padding: 10px 22px; border-radius: 30px; font-weight: 800; font-size: 0.95rem;">
+                    👤 Suba Gopal <span style="color: #ef4444; margin-left: 8px; cursor: pointer;">🚪 Logout</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4 BOLD COLORFUL STATS CARDS -->
+        <div class="stats-grid">
+            <div class="stat-card-pop stat-1">
+                <div><div class="num">12</div><div class="lbl">TOTAL TASKS</div></div>
+                <div style="font-size: 2.2rem;">📋</div>
+            </div>
+            <div class="stat-card-pop stat-2">
+                <div><div class="num">08</div><div class="lbl">IN PROGRESS</div></div>
+                <div style="font-size: 2.2rem;">⏳</div>
+            </div>
+            <div class="stat-card-pop stat-3">
+                <div><div class="num">04</div><div class="lbl">COMPLETED</div></div>
+                <div style="font-size: 2.2rem;">✅</div>
+            </div>
+            <div class="stat-card-pop stat-4">
+                <div><div class="num">00</div><div class="lbl">OVERDUE</div></div>
+                <div style="font-size: 2.2rem;">🎉</div>
+            </div>
+        </div>
+
+        <!-- MAIN SECTION -->
+        <div class="main-layout">
+            <!-- CREATE FORM CARD -->
+            <div class="c-card">
+                <h3 style="font-size: 1.35rem; font-weight: 800; margin-bottom: 20px;">⚡ Create New Task</h3>
+                <input type="text" class="input-stylish" value="Build Spring Security JWT Auth">
+                <textarea class="input-stylish" rows="3">BCrypt encryption, JWT provider, User login & register endpoints.</textarea>
+                <div style="display: flex; gap: 10px; margin-bottom: 18px;">
+                    <span class="pill-tag pill-work">💼 WORK</span>
+                    <span class="pill-tag" style="background: #ef4444; color: #fff; box-shadow: 0 4px 12px rgba(239,68,68,0.5);">🔴 HIGH PRIORITY</span>
+                </div>
+                <button class="btn-action-main">🚀 Save Task</button>
+            </div>
+
+            <!-- TASK CARDS -->
+            <div class="task-grid-pop">
+                <!-- CARD 1 -->
+                <div class="c-card card-task">
+                    <div class="card-task-header">
+                        <span class="pill-tag pill-work">💼 WORK</span>
+                        <span style="color: #ef4444; font-weight: 800; font-size: 0.85rem;">🔴 HIGH</span>
+                    </div>
+                    <h3 class="task-h">Spring Boot Security</h3>
+                    <p class="task-p">Configure CORS, BCrypt, and protect task endpoints with JWT token filter.</p>
+                    <div class="checklist-row">
+                        <div class="ch-item"><div class="ch-dot done"></div><span style="text-decoration: line-through; opacity: 0.6;">User Entity & AuthController</span></div>
+                        <div class="ch-item"><div class="ch-dot done"></div><span style="text-decoration: line-through; opacity: 0.6;">JwtUtil & Filter Setup</span></div>
+                        <div class="ch-item"><div class="ch-dot"></div><span>User task ownership testing</span></div>
+                    </div>
+                    <div class="card-foot">
+                        <span>📅 Due: Tomorrow</span>
+                        <div><button style="background:none;border:none;cursor:pointer;font-size:1.1rem;">✏️</button> <button style="background:none;border:none;cursor:pointer;font-size:1.1rem;margin-left:8px;">🗑️</button></div>
+                    </div>
+                </div>
+
+                <!-- CARD 2 -->
+                <div class="c-card card-task">
+                    <div class="card-task-header">
+                        <span class="pill-tag pill-study">📚 STUDY</span>
+                        <span style="color: #f59e0b; font-weight: 800; font-size: 0.85rem;">🟡 MEDIUM</span>
+                    </div>
+                    <h3 class="task-h">Node.js Session 1</h3>
+                    <p class="task-p">Understand Event Loop, Libuv, Streams, and Asynchronous I/O architecture.</p>
+                    <div class="checklist-row">
+                        <div class="ch-item"><div class="ch-dot done"></div><span style="text-decoration: line-through; opacity: 0.6;">Read official docs</span></div>
+                        <div class="ch-item"><div class="ch-dot"></div><span>Build demo express API</span></div>
+                    </div>
+                    <div class="card-foot">
+                        <span>📅 Due: Oct 31</span>
+                        <div><button style="background:none;border:none;cursor:pointer;font-size:1.1rem;">✏️</button> <button style="background:none;border:none;cursor:pointer;font-size:1.1rem;margin-left:8px;">🗑️</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function pick(cls) {
+            document.body.className = cls;
+        }
+    </script>
+</body>
+</html>
