@@ -1,6 +1,9 @@
 package com.example.taskmanager.service.impl;
 
 import com.example.taskmanager.dto.*;
+import com.example.taskmanager.entity.Task;
+import com.example.taskmanager.entity.TaskStatus;
+import com.example.taskmanager.entity.User;
 import com.example.taskmanager.service.AiService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,7 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class AiServiceImpl implements AiService {
@@ -39,7 +44,6 @@ public class AiServiceImpl implements AiService {
                         + "Do NOT include markdown formatting or backticks.";
 
                 String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey.trim();
-
                 Map<String, Object> textPart = Map.of("text", prompt);
                 Map<String, Object> parts = Map.of("parts", List.of(textPart));
                 Map<String, Object> requestBody = Map.of("contents", List.of(parts));
@@ -83,7 +87,6 @@ public class AiServiceImpl implements AiService {
             return new AiParsePromptResponseDto("New Task", "", "WORK", "MEDIUM", LocalDate.now().toString(), Collections.emptyList());
         }
 
-        // 1. Try Gemini API if key is present
         if (apiKey != null && !apiKey.trim().isEmpty() && !apiKey.contains("YOUR_GEMINI_KEY")) {
             try {
                 LocalDate today = LocalDate.now();
@@ -93,7 +96,7 @@ public class AiServiceImpl implements AiService {
                         + "1. \"title\": clear, cleaned-up task title without date or priority keywords. "
                         + "2. \"description\": any extra details or leave as empty string. "
                         + "3. \"category\": one of WORK, PERSONAL, STUDY, HEALTH, FINANCE, OTHER. "
-                        + "4. \"priority\": one of LOW, MEDIUM, HIGH (if user mentioned urgent, critical, important -> HIGH). "
+                        + "4. \"priority\": one of LOW, MEDIUM, HIGH. "
                         + "5. \"dueDate\": calculate YYYY-MM-DD from words like today, tomorrow, next week, or specific day. If unknown, use " + today.toString() + ". "
                         + "6. \"subtasks\": an array of 2-3 quick actionable steps. "
                         + "Respond ONLY with a valid raw JSON object with keys: title, description, category, priority, dueDate, subtasks. No markdown, no backticks.";
@@ -137,15 +140,168 @@ public class AiServiceImpl implements AiService {
             }
         }
 
-        // 2. High-Precision Smart Built-in NLP Engine (Works instantly with zero API key!)
         return parsePromptHeuristically(prompt);
+    }
+
+    @Override
+    public AiSummaryResponseDto getDailyExecutiveSummary(User user, List<Task> tasks) {
+        String name = user != null ? user.getUsername() : "Suba";
+        int hour = LocalTime.now().getHour();
+        String greeting = hour < 12 ? "Good morning " + name + "! 🌅" : (hour < 17 ? "Good afternoon " + name + "! ☀️" : "Good evening " + name + "! 🌙");
+
+        int total = tasks.size();
+        long completed = tasks.stream().filter(t -> t.getStatus() == TaskStatus.COMPLETED).count();
+        long pending = total - completed;
+
+        LocalDate today = LocalDate.now();
+        List<Task> overdue = tasks.stream()
+                .filter(t -> t.getStatus() != TaskStatus.COMPLETED && t.getDueDate() != null && t.getDueDate().isBefore(today))
+                .collect(Collectors.toList());
+
+        List<Task> dueToday = tasks.stream()
+                .filter(t -> t.getStatus() != TaskStatus.COMPLETED && t.getDueDate() != null && t.getDueDate().isEqual(today))
+                .collect(Collectors.toList());
+
+        List<Task> highPriority = tasks.stream()
+                .filter(t -> t.getStatus() != TaskStatus.COMPLETED && "HIGH".equalsIgnoreCase(t.getPriority().name()))
+                .collect(Collectors.toList());
+
+        int score = total > 0 ? (int) Math.round(((double) completed / total) * 100) : 100;
+
+        String summary;
+        String advice;
+        String focus;
+
+        if (total == 0) {
+            summary = "You currently have no tasks scheduled. It's a fresh canvas!";
+            advice = "Click 'Create New Task' or use Voice-to-Task to plan your upcoming goals.";
+            focus = "Set a goal for today";
+        } else if (!overdue.isEmpty()) {
+            summary = "Alert: You have " + overdue.size() + " overdue task(s) and " + dueToday.size() + " due today.";
+            advice = "Recommendation: Focus on clearing '" + overdue.get(0).getTitle() + "' first to eliminate backlog stress!";
+            focus = overdue.get(0).getTitle();
+        } else if (!dueToday.isEmpty()) {
+            summary = "You have " + dueToday.size() + " task(s) scheduled for today, with " + highPriority.size() + " high-priority item(s).";
+            advice = "Recommendation: Tackle '" + dueToday.get(0).getTitle() + "' before afternoon to build strong momentum!";
+            focus = dueToday.get(0).getTitle();
+        } else if (!highPriority.isEmpty()) {
+            summary = "Great job, no tasks are overdue! You have " + highPriority.size() + " high-priority task(s) in progress.";
+            advice = "Recommendation: Focus your energy on '" + highPriority.get(0).getTitle() + "'.";
+            focus = highPriority.get(0).getTitle();
+        } else {
+            summary = "All current tasks are in good standing (" + completed + "/" + total + " completed)! Completion score: " + score + "%.";
+            advice = "Keep up the excellent consistency! Take a quick break or plan ahead for the rest of the week.";
+            focus = pending > 0 ? "Review pending tasks" : "All goals accomplished! 🎉";
+        }
+
+        return new AiSummaryResponseDto(greeting, summary, advice, focus, score);
+    }
+
+    @Override
+    public AiChatResponseDto chatWithTasks(User user, List<Task> tasks, AiChatRequestDto request) {
+        String msg = request.getMessage() != null ? request.getMessage().trim() : "";
+        if (msg.isEmpty()) {
+            return new AiChatResponseDto("Hello! Ask me anything about your tasks, deadlines, or recommendations!");
+        }
+
+        // Try Gemini if key is provided
+        if (apiKey != null && !apiKey.trim().isEmpty() && !apiKey.contains("YOUR_GEMINI_KEY")) {
+            try {
+                StringBuilder taskContext = new StringBuilder();
+                tasks.forEach(t -> taskContext.append(String.format("- [%s] %s | Priority: %s | Category: %s | Due: %s\n",
+                        t.getStatus(), t.getTitle(), t.getPriority(), t.getCategory(), t.getDueDate())));
+
+                String prompt = "You are an intelligent task manager assistant for user " + (user != null ? user.getUsername() : "Suba") + ".\n"
+                        + "Here is the user's current list of tasks:\n" + taskContext.toString() + "\n"
+                        + "User question (may be in English, Tamil, or Tanglish): \"" + msg + "\"\n"
+                        + "Give a concise, helpful, friendly answer referencing their exact tasks. Answer in the same language/tone.";
+
+                String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey.trim();
+                Map<String, Object> textPart = Map.of("text", prompt);
+                Map<String, Object> parts = Map.of("parts", List.of(textPart));
+                Map<String, Object> requestBody = Map.of("contents", List.of(parts));
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+                ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    JsonNode root = objectMapper.readTree(response.getBody());
+                    String answer = root.path("candidates").path(0).path("content").path("parts").path(0).path("text").asText().trim();
+                    return new AiChatResponseDto(answer);
+                }
+            } catch (Exception e) {
+                System.err.println("Gemini Chat failed, using high-precision fallback engine: " + e.getMessage());
+            }
+        }
+
+        // High-precision Smart Heuristic Fallback Engine
+        return new AiChatResponseDto(answerTaskQueryHeuristically(msg, tasks));
+    }
+
+    private String answerTaskQueryHeuristically(String query, List<Task> tasks) {
+        String lower = query.toLowerCase();
+        LocalDate today = LocalDate.now();
+
+        // Overdue query
+        if (lower.contains("overdue") || lower.contains("late") || lower.contains("pending date")) {
+            List<Task> overdue = tasks.stream()
+                    .filter(t -> t.getStatus() != TaskStatus.COMPLETED && t.getDueDate() != null && t.getDueDate().isBefore(today))
+                    .collect(Collectors.toList());
+            if (overdue.isEmpty()) {
+                return "🎉 Excellent news! You have ZERO overdue tasks right now. Everything is right on track!";
+            } else {
+                StringBuilder sb = new StringBuilder("⚠️ You have " + overdue.size() + " overdue task(s):\n");
+                overdue.forEach(t -> sb.append("• ").append(t.getTitle()).append(" (Due: ").append(t.getDueDate()).append(")\n"));
+                sb.append("Consider tackling these first!");
+                return sb.toString();
+            }
+        }
+
+        // Category queries (Study, Work, Health, Finance, etc.)
+        for (String cat : List.of("study", "work", "health", "finance", "personal")) {
+            if (lower.contains(cat)) {
+                List<Task> matched = tasks.stream()
+                        .filter(t -> t.getCategory().name().equalsIgnoreCase(cat) && t.getStatus() != TaskStatus.COMPLETED)
+                        .collect(Collectors.toList());
+                if (matched.isEmpty()) {
+                    return "You have no pending " + cat.toUpperCase() + " tasks! All clear! ✨";
+                }
+                StringBuilder sb = new StringBuilder("Here are your pending " + cat.toUpperCase() + " tasks (" + matched.size() + "):\n");
+                matched.forEach(t -> sb.append("• ").append(t.getTitle()).append(" [Priority: ").append(t.getPriority()).append("]\n"));
+                return sb.toString();
+            }
+        }
+
+        // Next / What to focus on / Priority
+        if (lower.contains("focus") || lower.contains("next") || lower.contains("first") || lower.contains("important") || lower.contains("urgent")) {
+            Optional<Task> top = tasks.stream()
+                    .filter(t -> t.getStatus() != TaskStatus.COMPLETED)
+                    .sorted((a, b) -> {
+                        if ("HIGH".equalsIgnoreCase(a.getPriority().name())) return -1;
+                        if ("HIGH".equalsIgnoreCase(b.getPriority().name())) return 1;
+                        return 0;
+                    })
+                    .findFirst();
+            if (top.isPresent()) {
+                Task t = top.get();
+                return "🎯 Top Recommendation: You should focus on **\"" + t.getTitle() + "\"** (" + t.getCategory() + " · Priority: " + t.getPriority() + "). It requires your immediate attention!";
+            } else {
+                return "All your tasks are completed! You're free to relax or create a new goal! 🚀";
+            }
+        }
+
+        // Summary / Count
+        long completed = tasks.stream().filter(t -> t.getStatus() == TaskStatus.COMPLETED).count();
+        long pending = tasks.size() - completed;
+        return "📊 Task Overview:\n• Total Tasks: " + tasks.size() + "\n• In Progress: " + pending + "\n• Completed: " + completed + "\n\nAsk me anytime about specific categories, overdue items, or what to do next!";
     }
 
     private AiParsePromptResponseDto parsePromptHeuristically(String prompt) {
         String lower = prompt.toLowerCase();
         LocalDate targetDate = LocalDate.now();
 
-        // Date calculation
         if (lower.contains("tomorrow") || lower.contains("naalaikku") || lower.contains("nalaiku")) {
             targetDate = targetDate.plusDays(1);
         } else if (lower.contains("day after tomorrow") || lower.contains("nalaniki")) {
@@ -156,7 +312,6 @@ public class AiServiceImpl implements AiService {
             targetDate = targetDate.plusDays(3);
         }
 
-        // Priority calculation
         String priority = "MEDIUM";
         if (lower.contains("urgent") || lower.contains("high") || lower.contains("mukkiyam") || lower.contains("critical") || lower.contains("asap")) {
             priority = "HIGH";
@@ -164,7 +319,6 @@ public class AiServiceImpl implements AiService {
             priority = "LOW";
         }
 
-        // Category calculation
         String category = "WORK";
         if (lower.contains("study") || lower.contains("exam") || lower.contains("learn") || lower.contains("read") || lower.contains("session") || lower.contains("college")) {
             category = "STUDY";
@@ -176,7 +330,6 @@ public class AiServiceImpl implements AiService {
             category = "PERSONAL";
         }
 
-        // Clean task title
         String cleanTitle = prompt;
         String[] noiseWords = {
             "tomorrow evening", "tomorrow morning", "tomorrow", "day after tomorrow", "today", "next week",
@@ -189,7 +342,6 @@ public class AiServiceImpl implements AiService {
         cleanTitle = cleanTitle.replaceAll("\\s+", " ").trim();
         if (cleanTitle.length() < 3) cleanTitle = prompt;
 
-        // Capitalize first letter
         cleanTitle = Character.toUpperCase(cleanTitle.charAt(0)) + cleanTitle.substring(1);
 
         List<String> subtasks = new ArrayList<>();

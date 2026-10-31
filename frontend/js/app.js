@@ -177,7 +177,7 @@ async function loadTasks() {
         }
         currentTasks = await res.json();
         renderTasks();
-        updateDashboardStats(); updateNotifications();
+        updateDashboardStats(); updateNotifications(); loadAiExecutiveSummary();
     } catch (err) {
         console.error("Error loading tasks:", err);
     }
@@ -1062,4 +1062,114 @@ async function processSmartVoicePrompt() {
     } finally {
         promptInput.placeholder = origPlaceholder;
     }
+}
+
+// ==========================================
+// AI DAILY EXECUTIVE COACH
+// ==========================================
+let currentCoachTextToSpeak = "";
+
+async function loadAiExecutiveSummary() {
+    const greetingEl = document.getElementById("aiCoachGreeting");
+    const summaryEl = document.getElementById("aiCoachSummary");
+    const focusEl = document.getElementById("aiCoachFocus");
+    const adviceEl = document.getElementById("aiCoachAdvice");
+    if (!greetingEl) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/ai/summary`, {
+            headers: getAuthHeaders()
+        });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        greetingEl.textContent = data.greeting;
+        summaryEl.textContent = data.summary;
+        focusEl.textContent = data.priorityFocus;
+        adviceEl.textContent = data.coachAdvice;
+
+        currentCoachTextToSpeak = `${data.greeting} ${data.summary} ${data.coachAdvice}`;
+    } catch (e) {
+        console.error("AI Coach summary load error:", e);
+    }
+}
+
+function speakAiCoachAdvice() {
+    if (!("speechSynthesis" in window)) {
+        alert("Text-to-speech is not supported in this browser.");
+        return;
+    }
+    if (!currentCoachTextToSpeak) return;
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(currentCoachTextToSpeak);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
+}
+
+// ==========================================
+// AI CHATBOT INTERACTION
+// ==========================================
+function toggleAiChat() {
+    const panel = document.getElementById("aiChatPanel");
+    if (!panel) return;
+    panel.classList.toggle("active");
+    if (panel.classList.contains("active")) {
+        document.getElementById("aiChatInput").focus();
+    }
+}
+
+function sendQuickPrompt(promptText) {
+    document.getElementById("aiChatInput").value = promptText;
+    handleChatSubmit(new Event("submit"));
+}
+
+async function handleChatSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const input = document.getElementById("aiChatInput");
+    const text = input.value.trim();
+    if (!text) return;
+
+    appendChatMessage(text, "user");
+    input.value = "";
+
+    // Show typing bubble
+    const typingId = "typingBubble_" + Date.now();
+    const messages = document.getElementById("aiChatMessages");
+    const typingBubble = document.createElement("div");
+    typingBubble.className = "chat-bubble ai";
+    typingBubble.id = typingId;
+    typingBubble.textContent = "AI is thinking...";
+    messages.appendChild(typingBubble);
+    messages.scrollTop = messages.scrollHeight;
+
+    try {
+        const res = await fetch(`${API_BASE}/ai/chat`, {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ message: text })
+        });
+
+        const typingEl = document.getElementById(typingId);
+        if (typingEl) typingEl.remove();
+
+        if (!res.ok) throw new Error("Chat failed");
+        const data = await res.json();
+        appendChatMessage(data.reply, "ai");
+        playNotifChime();
+    } catch (err) {
+        const typingEl = document.getElementById(typingId);
+        if (typingEl) typingEl.remove();
+        appendChatMessage("Sorry, could not process request right now. Please check if backend is running!", "ai");
+    }
+}
+
+function appendChatMessage(text, sender) {
+    const messages = document.getElementById("aiChatMessages");
+    const bubble = document.createElement("div");
+    bubble.className = `chat-bubble ${sender}`;
+    bubble.innerHTML = escapeHtml(text).replace(/\n/g, "<br>");
+    messages.appendChild(bubble);
+    messages.scrollTop = messages.scrollHeight;
 }

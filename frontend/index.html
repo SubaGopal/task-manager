@@ -84,6 +84,30 @@
             </div>
         </header>
 
+                <!-- AI DAILY EXECUTIVE SUMMARY & COACH -->
+        <section class="ai-coach-banner card" id="aiCoachBanner">
+            <div class="ai-coach-glow"></div>
+            <div class="ai-coach-header">
+                <div class="ai-coach-title-group">
+                    <span class="ai-coach-avatar">🤖</span>
+                    <div>
+                        <h2 id="aiCoachGreeting">Good morning, Suba! 🌅</h2>
+                        <span class="ai-coach-badge">✨ AI Executive Coach</span>
+                    </div>
+                </div>
+                <div class="ai-coach-actions">
+                    <button class="btn-coach-action" onclick="speakAiCoachAdvice()" title="Read Aloud with Voice">🔊 Listen</button>
+                    <button class="btn-coach-action" onclick="loadAiExecutiveSummary()" title="Refresh Insights">🔄 Refresh</button>
+                </div>
+            </div>
+            <div class="ai-coach-body">
+                <p id="aiCoachSummary" class="ai-coach-summary">Analyzing your daily tasks...</p>
+                <div class="ai-coach-recommendation">
+                    <span class="ai-coach-focus-pill">🎯 Recommended Focus: <b id="aiCoachFocus">Loading...</b></span>
+                    <span id="aiCoachAdvice" class="ai-coach-advice">Prioritizing high impact deliverables.</span>
+                </div>
+            </div>
+        </section>
         <!-- DASHBOARD STATS -->
         <section class="dashboard-stats">
             <div class="stat-card">
@@ -356,6 +380,41 @@
                 <span>💡 <b>Example:</b> <i>"Tomorrow evening 5pm-க்கு Suresh கூட Finance Meeting வெக்கணும் high priority"</i></span>
             </div>
         </div>
+    </div>
+    <!-- FLOATING AI CHATBOT WIDGET -->
+    <div id="aiChatLauncher" class="ai-chat-launcher" onclick="toggleAiChat()" title="Chat with Your Tasks">
+        <span class="chat-launcher-icon">💬</span>
+        <span class="chat-launcher-text">Ask AI</span>
+    </div>
+
+    <div id="aiChatPanel" class="ai-chat-panel">
+        <div class="ai-chat-header">
+            <div class="ai-chat-title">
+                <span class="chat-avatar">🤖</span>
+                <div>
+                    <h4>Task AI Assistant</h4>
+                    <span class="chat-status">🟢 Online · Ask anything</span>
+                </div>
+            </div>
+            <button class="btn-close" onclick="toggleAiChat()">&times;</button>
+        </div>
+
+        <div class="ai-chat-body" id="aiChatMessages">
+            <div class="chat-bubble ai">
+                👋 Hello Suba! I can analyze your tasks, list deadlines, find overdue items, or suggest what to do next. Try asking me below!
+            </div>
+        </div>
+
+        <div class="ai-chat-chips">
+            <button class="chat-chip" onclick="sendQuickPrompt('What should I focus on next?')">🎯 Next focus</button>
+            <button class="chat-chip" onclick="sendQuickPrompt('Do I have any overdue tasks?')">⚠️ Overdue</button>
+            <button class="chat-chip" onclick="sendQuickPrompt('What are my Study tasks?')">📚 Study tasks</button>
+        </div>
+
+        <form class="ai-chat-footer" onsubmit="handleChatSubmit(event)">
+            <input type="text" id="aiChatInput" placeholder="Ask in English or Tamil (e.g. என்னென்ன tasks இருக்கு?)..." autocomplete="off">
+            <button type="submit" class="btn-chat-send" title="Send Message">🚀</button>
+        </form>
     </div>
 </body>
 </html>
