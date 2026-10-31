@@ -177,7 +177,7 @@ async function loadTasks() {
         }
         currentTasks = await res.json();
         renderTasks();
-        updateDashboardStats();
+        updateDashboardStats(); updateNotifications();
     } catch (err) {
         console.error("Error loading tasks:", err);
     }
@@ -707,4 +707,196 @@ async function triggerAiBreakdown() {
         aiBtn.innerHTML = origText;
         aiBtn.classList.remove("thinking");
     }
+}
+
+// ==========================================
+// NOTIFICATION CENTER & CHIME ALERTS
+// ==========================================
+let audioCtx = null;
+let lastChimedTaskCount = 0;
+
+function getAudioContext() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+}
+
+// Gentle Melodic Chime using Web Audio API (C5 -> E5 -> G5)
+function playNotifChime() {
+    try {
+        const ctx = getAudioContext();
+        if (ctx.state === "suspended") ctx.resume();
+
+        const now = ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 notes
+
+        notes.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+
+            gain.gain.setValueAtTime(0, now + idx * 0.12);
+            gain.gain.linearRampToValueAtTime(0.2, now + idx * 0.12 + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.4);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(now + idx * 0.12);
+            osc.stop(now + idx * 0.12 + 0.45);
+        });
+    } catch (e) {
+        console.warn("Audio chime disabled or blocked by browser:", e);
+    }
+}
+
+function testNotificationChime() {
+    playNotifChime();
+}
+
+function enablePushNotifications() {
+    if (!("Notification" in window)) {
+        alert("This browser does not support Desktop Push Notifications.");
+        return;
+    }
+    Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+            new Notification("Task Manager Pro 🔔", {
+                body: "Desktop Notifications are now enabled! You will be alerted for due tasks.",
+                icon: "favicon.ico"
+            });
+            playNotifChime();
+        } else {
+            alert("Notification permission was denied. You can enable it in browser settings.");
+        }
+    });
+}
+
+function toggleNotifDropdown(e) {
+    if (e) e.stopPropagation();
+    const dropdown = document.getElementById("notifDropdown");
+    if (dropdown) {
+        dropdown.classList.toggle("active");
+    }
+}
+
+// Close notification dropdown when clicking outside
+document.addEventListener("click", (e) => {
+    const wrapper = document.querySelector(".notif-wrapper");
+    const dropdown = document.getElementById("notifDropdown");
+    if (dropdown && dropdown.classList.contains("active") && wrapper && !wrapper.contains(e.target)) {
+        dropdown.classList.remove("active");
+    }
+});
+
+function updateNotifications() {
+    const badge = document.getElementById("notifBadge");
+    const list = document.getElementById("notifList");
+    const subtext = document.getElementById("notifSubtext");
+    if (!badge || !list) return;
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const todayTimestamp = new Date().setHours(0, 0, 0, 0);
+
+    const overdueList = [];
+    const todayList = [];
+    const upcomingList = [];
+
+    currentTasks.forEach(t => {
+        if (t.status === "COMPLETED" || !t.dueDate) return;
+        const taskDate = new Date(t.dueDate).setHours(0, 0, 0, 0);
+
+        if (taskDate < todayTimestamp) {
+            overdueList.push(t);
+        } else if (t.dueDate === todayStr) {
+            todayList.push(t);
+        } else {
+            const diffDays = Math.round((taskDate - todayTimestamp) / (1000 * 60 * 60 * 24));
+            if (diffDays <= 2) {
+                upcomingList.push(t);
+            }
+        }
+    });
+
+    const totalAlerts = overdueList.length + todayList.length;
+
+    // Update Badge
+    if (totalAlerts > 0) {
+        badge.textContent = totalAlerts;
+        badge.style.display = "flex";
+        subtext.textContent = `${overdueList.length} Overdue · ${todayList.length} Due Today`;
+    } else {
+        badge.style.display = "none";
+        subtext.textContent = "All tasks on track 🎉";
+    }
+
+    // Play Chime on fresh overdue/due alerts
+    if (totalAlerts > 0 && totalAlerts > lastChimedTaskCount) {
+        playNotifChime();
+        if ("Notification" in window && Notification.permission === "granted") {
+            const firstAlert = overdueList[0] || todayList[0];
+            new Notification(`Task Reminder: ${firstAlert.title}`, {
+                body: `Priority: ${firstAlert.priority} · Category: ${firstAlert.category}`,
+                icon: "favicon.ico"
+            });
+        }
+    }
+    lastChimedTaskCount = totalAlerts;
+
+    // Render Notifications HTML
+    if (overdueList.length === 0 && todayList.length === 0 && upcomingList.length === 0) {
+        list.innerHTML = `<div class="notif-empty">No pending alerts right now! You're completely up to date 🚀</div>`;
+        return;
+    }
+
+    let html = "";
+
+    overdueList.forEach(t => {
+        html += `
+            <div class="notif-item overdue">
+                <div class="notif-item-content">
+                    <div class="notif-item-title" onclick="editTask(${t.id}); toggleNotifDropdown();">${escapeHtml(t.title)}</div>
+                    <div class="notif-item-meta overdue-text">⚠️ Overdue (Due: ${t.dueDate})</div>
+                </div>
+                <div class="notif-item-actions">
+                    <button class="btn-action" onclick="toggleTaskStatus(${t.id}, '${t.status}')" title="Mark Done">✅</button>
+                    <button class="btn-action" onclick="editTask(${t.id}); toggleNotifDropdown();" title="Edit">✏️</button>
+                </div>
+            </div>
+        `;
+    });
+
+    todayList.forEach(t => {
+        html += `
+            <div class="notif-item today">
+                <div class="notif-item-content">
+                    <div class="notif-item-title" onclick="editTask(${t.id}); toggleNotifDropdown();">${escapeHtml(t.title)}</div>
+                    <div class="notif-item-meta today-text">⏳ Due Today (${t.dueDate})</div>
+                </div>
+                <div class="notif-item-actions">
+                    <button class="btn-action" onclick="toggleTaskStatus(${t.id}, '${t.status}')" title="Mark Done">✅</button>
+                    <button class="btn-action" onclick="editTask(${t.id}); toggleNotifDropdown();" title="Edit">✏️</button>
+                </div>
+            </div>
+        `;
+    });
+
+    upcomingList.forEach(t => {
+        html += `
+            <div class="notif-item upcoming">
+                <div class="notif-item-content">
+                    <div class="notif-item-title" onclick="editTask(${t.id}); toggleNotifDropdown();">${escapeHtml(t.title)}</div>
+                    <div class="notif-item-meta upcoming-text">📅 Upcoming (Due: ${t.dueDate})</div>
+                </div>
+                <div class="notif-item-actions">
+                    <button class="btn-action" onclick="editTask(${t.id}); toggleNotifDropdown();" title="Edit">✏️</button>
+                </div>
+            </div>
+        `;
+    });
+
+    list.innerHTML = html;
 }
