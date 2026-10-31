@@ -1,7 +1,6 @@
 package com.example.taskmanager.service.impl;
 
-import com.example.taskmanager.dto.AiBreakdownRequestDto;
-import com.example.taskmanager.dto.AiBreakdownResponseDto;
+import com.example.taskmanager.dto.*;
 import com.example.taskmanager.service.AiService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +9,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
 import java.util.*;
 
 @Service
@@ -28,7 +28,6 @@ public class AiServiceImpl implements AiService {
             return new AiBreakdownResponseDto(Collections.emptyList(), "WORK", "MEDIUM");
         }
 
-        // 1. If Gemini API Key is configured, call Google Gemini 1.5 Flash
         if (apiKey != null && !apiKey.trim().isEmpty() && !apiKey.contains("YOUR_GEMINI_KEY")) {
             try {
                 String prompt = "You are a productivity expert. Given the task title: \"" + title + "\", "
@@ -55,7 +54,6 @@ public class AiServiceImpl implements AiService {
                     JsonNode candidate = root.path("candidates").path(0).path("content").path("parts").path(0).path("text");
                     String rawText = candidate.asText().trim();
 
-                    // Clean markdown code fence if present
                     if (rawText.startsWith("`")) {
                         rawText = rawText.replaceAll("(?s)^`[a-zA-Z]*\\n?", "").replaceAll("`$", "").trim();
                     }
@@ -75,8 +73,138 @@ public class AiServiceImpl implements AiService {
             }
         }
 
-        // 2. Smart Built-in Fallback Engine (Immediate realistic breakdown even without API key)
         return generateSmartFallback(title);
+    }
+
+    @Override
+    public AiParsePromptResponseDto parseNaturalLanguagePrompt(AiParsePromptRequestDto request) {
+        String prompt = request.getPrompt() != null ? request.getPrompt().trim() : "";
+        if (prompt.isEmpty()) {
+            return new AiParsePromptResponseDto("New Task", "", "WORK", "MEDIUM", LocalDate.now().toString(), Collections.emptyList());
+        }
+
+        // 1. Try Gemini API if key is present
+        if (apiKey != null && !apiKey.trim().isEmpty() && !apiKey.contains("YOUR_GEMINI_KEY")) {
+            try {
+                LocalDate today = LocalDate.now();
+                String systemPrompt = "You are a smart task scheduler. The current date is " + today.toString() + ". "
+                        + "Extract details from this spoken task instruction: \"" + prompt + "\". "
+                        + "Extract: "
+                        + "1. \"title\": clear, cleaned-up task title without date or priority keywords. "
+                        + "2. \"description\": any extra details or leave as empty string. "
+                        + "3. \"category\": one of WORK, PERSONAL, STUDY, HEALTH, FINANCE, OTHER. "
+                        + "4. \"priority\": one of LOW, MEDIUM, HIGH (if user mentioned urgent, critical, important -> HIGH). "
+                        + "5. \"dueDate\": calculate YYYY-MM-DD from words like today, tomorrow, next week, or specific day. If unknown, use " + today.toString() + ". "
+                        + "6. \"subtasks\": an array of 2-3 quick actionable steps. "
+                        + "Respond ONLY with a valid raw JSON object with keys: title, description, category, priority, dueDate, subtasks. No markdown, no backticks.";
+
+                String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey.trim();
+                Map<String, Object> textPart = Map.of("text", systemPrompt);
+                Map<String, Object> parts = Map.of("parts", List.of(textPart));
+                Map<String, Object> requestBody = Map.of("contents", List.of(parts));
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+                ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    JsonNode root = objectMapper.readTree(response.getBody());
+                    JsonNode candidate = root.path("candidates").path(0).path("content").path("parts").path(0).path("text");
+                    String rawText = candidate.asText().trim();
+
+                    if (rawText.startsWith("`")) {
+                        rawText = rawText.replaceAll("(?s)^`[a-zA-Z]*\\n?", "").replaceAll("`$", "").trim();
+                    }
+
+                    JsonNode parsed = objectMapper.readTree(rawText);
+                    List<String> subtasks = new ArrayList<>();
+                    if (parsed.has("subtasks")) {
+                        parsed.get("subtasks").forEach(node -> subtasks.add(node.asText()));
+                    }
+
+                    return new AiParsePromptResponseDto(
+                            parsed.path("title").asText(prompt),
+                            parsed.path("description").asText("Created via Smart Voice Assistant"),
+                            parsed.path("category").asText("WORK").toUpperCase(),
+                            parsed.path("priority").asText("MEDIUM").toUpperCase(),
+                            parsed.path("dueDate").asText(today.toString()),
+                            subtasks
+                    );
+                }
+            } catch (Exception e) {
+                System.err.println("Gemini NLP call failed, using built-in NLP engine: " + e.getMessage());
+            }
+        }
+
+        // 2. High-Precision Smart Built-in NLP Engine (Works instantly with zero API key!)
+        return parsePromptHeuristically(prompt);
+    }
+
+    private AiParsePromptResponseDto parsePromptHeuristically(String prompt) {
+        String lower = prompt.toLowerCase();
+        LocalDate targetDate = LocalDate.now();
+
+        // Date calculation
+        if (lower.contains("tomorrow") || lower.contains("naalaikku") || lower.contains("nalaiku")) {
+            targetDate = targetDate.plusDays(1);
+        } else if (lower.contains("day after tomorrow") || lower.contains("nalaniki")) {
+            targetDate = targetDate.plusDays(2);
+        } else if (lower.contains("next week") || lower.contains("adutha vaaram")) {
+            targetDate = targetDate.plusWeeks(1);
+        } else if (lower.contains("after 3 days") || lower.contains("in 3 days")) {
+            targetDate = targetDate.plusDays(3);
+        }
+
+        // Priority calculation
+        String priority = "MEDIUM";
+        if (lower.contains("urgent") || lower.contains("high") || lower.contains("mukkiyam") || lower.contains("critical") || lower.contains("asap")) {
+            priority = "HIGH";
+        } else if (lower.contains("low") || lower.contains("later") || lower.contains("slow")) {
+            priority = "LOW";
+        }
+
+        // Category calculation
+        String category = "WORK";
+        if (lower.contains("study") || lower.contains("exam") || lower.contains("learn") || lower.contains("read") || lower.contains("session") || lower.contains("college")) {
+            category = "STUDY";
+        } else if (lower.contains("gym") || lower.contains("doctor") || lower.contains("health") || lower.contains("medicine") || lower.contains("walk") || lower.contains("hospital")) {
+            category = "HEALTH";
+        } else if (lower.contains("finance") || lower.contains("money") || lower.contains("budget") || lower.contains("bank") || lower.contains("tax") || lower.contains("bill") || lower.contains("pay") || lower.contains("salary")) {
+            category = "FINANCE";
+        } else if (lower.contains("movie") || lower.contains("family") || lower.contains("home") || lower.contains("shop") || lower.contains("buy") || lower.contains("personal") || lower.contains("dinner")) {
+            category = "PERSONAL";
+        }
+
+        // Clean task title
+        String cleanTitle = prompt;
+        String[] noiseWords = {
+            "tomorrow evening", "tomorrow morning", "tomorrow", "day after tomorrow", "today", "next week",
+            "high priority", "urgent priority", "low priority", "medium priority", "urgent", "asap",
+            "kooda", "koodi", "vekkanum", "pannanum", "mudikkanum", "vaanganum", "category", "priority"
+        };
+        for (String noise : noiseWords) {
+            cleanTitle = cleanTitle.replaceAll("(?i)\\b" + noise + "\\b", "");
+        }
+        cleanTitle = cleanTitle.replaceAll("\\s+", " ").trim();
+        if (cleanTitle.length() < 3) cleanTitle = prompt;
+
+        // Capitalize first letter
+        cleanTitle = Character.toUpperCase(cleanTitle.charAt(0)) + cleanTitle.substring(1);
+
+        List<String> subtasks = new ArrayList<>();
+        subtasks.add("Prepare agenda & required items");
+        subtasks.add("Execute main activity: " + cleanTitle);
+        subtasks.add("Follow up and mark as completed");
+
+        return new AiParsePromptResponseDto(
+                cleanTitle,
+                "Auto-extracted via Smart Voice: \"" + prompt + "\"",
+                category,
+                priority,
+                targetDate.toString(),
+                subtasks
+        );
     }
 
     private AiBreakdownResponseDto generateSmartFallback(String title) {

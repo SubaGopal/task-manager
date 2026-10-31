@@ -900,3 +900,166 @@ function updateNotifications() {
 
     list.innerHTML = html;
 }
+
+// ==========================================
+// SMART VOICE-TO-TASK ASSISTANT (NATURAL NLP)
+// ==========================================
+let smartVoiceRecognition = null;
+let isSmartVoiceListening = false;
+
+function openSmartVoiceModal() {
+    const modal = document.getElementById("smartVoiceModal");
+    if (modal) {
+        modal.classList.add("active");
+        modal.style.display = "flex";
+        document.getElementById("smartVoiceInput").focus();
+    }
+}
+
+function closeSmartVoiceModal() {
+    const modal = document.getElementById("smartVoiceModal");
+    if (modal) {
+        modal.classList.remove("active");
+        modal.style.display = "none";
+    }
+    if (isSmartVoiceListening && smartVoiceRecognition) {
+        smartVoiceRecognition.stop();
+    }
+}
+
+function toggleVoiceRecognition() {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+        alert("Speech Recognition is not supported in this browser. You can type directly in the box!");
+        return;
+    }
+
+    const recBtn = document.getElementById("startVoiceRecBtn");
+    const visualizer = document.querySelector(".voice-visualizer");
+    const transcriptInput = document.getElementById("smartVoiceInput");
+
+    if (isSmartVoiceListening) {
+        if (smartVoiceRecognition) smartVoiceRecognition.stop();
+        return;
+    }
+
+    smartVoiceRecognition = new SpeechRec();
+    smartVoiceRecognition.lang = "en-US";
+    smartVoiceRecognition.continuous = false;
+    smartVoiceRecognition.interimResults = true;
+
+    smartVoiceRecognition.onstart = () => {
+        isSmartVoiceListening = true;
+        recBtn.innerHTML = "🔴 Listening... (Speak now)";
+        recBtn.style.background = "#ef4444";
+        visualizer.classList.add("recording");
+    };
+
+    smartVoiceRecognition.onresult = (e) => {
+        let transcript = "";
+        for (let i = e.resultIndex; i < e.results.length; ++i) {
+            transcript += e.results[i][0].transcript;
+        }
+        transcriptInput.value = transcript;
+    };
+
+    smartVoiceRecognition.onerror = (e) => {
+        console.error("Speech recognition error:", e);
+    };
+
+    smartVoiceRecognition.onend = () => {
+        isSmartVoiceListening = false;
+        recBtn.innerHTML = "🎙️ Start Listening";
+        recBtn.style.background = "";
+        visualizer.classList.remove("recording");
+        // Auto trigger AI extraction if text captured
+        if (transcriptInput.value.trim().length > 3) {
+            processSmartVoicePrompt();
+        }
+    };
+
+    smartVoiceRecognition.start();
+}
+
+async function processSmartVoicePrompt() {
+    const promptInput = document.getElementById("smartVoiceInput");
+    const prompt = promptInput.value.trim();
+    if (!prompt) {
+        alert("Please speak or type a task first!");
+        return;
+    }
+
+    const modal = document.getElementById("smartVoiceModal");
+    const origPlaceholder = promptInput.placeholder;
+    promptInput.value = "🧠 AI is extracting details from: \"" + prompt + "\"...";
+
+    try {
+        const res = await fetch(`${API_BASE}/ai/parse-prompt`, {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ prompt: prompt })
+        });
+
+        if (!res.ok) throw new Error("NLP Parse failed");
+
+        const data = await res.json();
+
+        // 1. Fill Title
+        if (data.title) {
+            document.getElementById("taskTitle").value = data.title;
+        }
+
+        // 2. Fill Description
+        if (data.description) {
+            document.getElementById("taskDesc").value = data.description;
+        }
+
+        // 3. Set Category
+        if (data.category) {
+            const catSelect = document.getElementById("taskCategory");
+            for (let opt of catSelect.options) {
+                if (opt.value === data.category) {
+                    catSelect.value = data.category;
+                    break;
+                }
+            }
+        }
+
+        // 4. Set Priority
+        if (data.priority) {
+            const priSelect = document.getElementById("taskPriority");
+            for (let opt of priSelect.options) {
+                if (opt.value === data.priority) {
+                    priSelect.value = data.priority;
+                    break;
+                }
+            }
+        }
+
+        // 5. Set Due Date
+        if (data.dueDate) {
+            document.getElementById("taskDueDate").value = data.dueDate;
+        }
+
+        // 6. Subtasks
+        if (data.subtasks && data.subtasks.length > 0) {
+            formSubtasks = data.subtasks.map(s => ({ title: s, completed: false }));
+            renderFormSubtasks();
+        }
+
+        // Close Modal & Celebrate
+        closeSmartVoiceModal();
+        promptInput.value = "";
+        triggerConfetti();
+        playNotifChime();
+
+        // Smooth scroll to form
+        window.scrollTo({ top: 0, behavior: "smooth" });
+
+    } catch (err) {
+        console.error("AI NLP parse error:", err);
+        alert("Could not extract details. Ensure backend is running!");
+    } finally {
+        promptInput.placeholder = origPlaceholder;
+    }
+}

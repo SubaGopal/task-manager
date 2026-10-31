@@ -133,6 +133,7 @@
             <aside class="form-panel card">
                 <div class="panel-header">
                     <h2 id="formTitle">Create New Task</h2>
+<button type="button" class="btn-voice-ai-magic" onclick="openSmartVoiceModal()" title="Speak naturally to create task">🧠 AI Voice-to-Task</button>
                     <span class="badge badge-info">Shortcut: N</span>
                 </div>
                 <form id="taskForm">
@@ -319,5 +320,42 @@
     </div>
 
     <script src="js/app.js"></script>
+    <!-- SMART VOICE-TO-TASK MODAL -->
+    <div id="smartVoiceModal" class="modal-overlay" style="display: none;" onclick="if(event.target===this) closeSmartVoiceModal()">
+        <div class="modal voice-modal-card">
+            <div class="modal-header">
+                <div class="voice-modal-title">
+                    <span class="pulse-mic-icon">🎙️</span>
+                    <div>
+                        <h3>Natural Language Voice-to-Task</h3>
+                        <p class="voice-modal-subtitle">Speak naturally in English or Tanglish / Tamil</p>
+                    </div>
+                </div>
+                <button class="btn-close" onclick="closeSmartVoiceModal()">&times;</button>
+            </div>
+            
+            <div class="voice-visualizer">
+                <div class="voice-bar"></div>
+                <div class="voice-bar"></div>
+                <div class="voice-bar"></div>
+                <div class="voice-bar"></div>
+                <div class="voice-bar"></div>
+                <div class="voice-bar"></div>
+            </div>
+
+            <div class="voice-transcript-box">
+                <textarea id="smartVoiceInput" rows="3" placeholder="Click 'Start Listening' and speak (e.g. 'Tomorrow evening Suresh kooda Finance meeting vekkanum urgent priority')..."></textarea>
+            </div>
+
+            <div class="voice-actions">
+                <button type="button" id="startVoiceRecBtn" class="btn btn-primary" onclick="toggleVoiceRecognition()">🎙️ Start Listening</button>
+                <button type="button" class="btn btn-secondary" onclick="processSmartVoicePrompt()">🧠 AI Extract & Fill Form</button>
+            </div>
+
+            <div class="voice-tips">
+                <span>💡 <b>Example:</b> <i>"Tomorrow evening 5pm-க்கு Suresh கூட Finance Meeting வெக்கணும் high priority"</i></span>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
